@@ -46,9 +46,10 @@ class Appointment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
-    time = db.Column(db.Time, nullable=False)
+    start_time = db.Column(db.Time, nullable=False)  # Changed from time to start_time
+    end_time = db.Column(db.Time, nullable=False)    # Added end_time
     diagnosis = db.Column(db.Text, nullable=True)
-    date_created = db.Column(db.DateTime, default=datetime.utcnow)  # New field for creation date
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
 
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)

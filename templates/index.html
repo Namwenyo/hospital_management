@@ -3,7 +3,7 @@
 
 <div class="container my-4">
     <h1 class="mb-4 text-center" style="color: #2c3e50; font-weight: 600; padding-bottom: 10px; border-bottom: 2px solid #ecf0f1;">
-        <i class="fas fa-hospital me-2" style="color: #3498db;"></i>Hospital Management Dashboard
+        <i class="fas fa-heartbeat me-2" style="color: #3498db;"></i>Hospital Management Dashboard
     </h1>
     
     <!-- Stats Overview Cards -->
@@ -64,7 +64,7 @@
                 <i class="fas fa-eye me-1"></i>View All
             </a>
             <a href="{{ url_for('appointments') }}" class="btn btn-light btn-sm" style="background-color: white; color: #9b59b6; border: none;"> 
-                <i class="fas fa-plus me-1"></i>Book Appointment
+                <i class="fas fa-plus me-1"></i>Add Appointment
             </a>
         </div>
     </div>
@@ -84,7 +84,7 @@
                         {% for a in appointments %}
                         <tr>
                             <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ a.time.strftime('%H:%M') }}</td>
+                            <td>{{ a.start_time.strftime('%H:%M') }} - {{ a.end_time.strftime('%H:%M') }}</td>
                             <td>{{ a.patient.first_name }} {{ a.patient.surname }}</td>
                             <td>{{ a.doctor.name }}</td>
                             <td>

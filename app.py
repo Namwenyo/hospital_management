@@ -130,7 +130,8 @@ def appointments():
     # Handle appointment creation
     if request.method == 'POST':
         date_str = request.form['date']  
-        time_str = request.form['time']  
+        start_time_str = request.form['start_time']  
+        end_time_str = request.form['end_time']  
         diagnosis = request.form['diagnosis']
         patient_id = request.form['patient_id']
         doctor_id = request.form['doctor_id']
@@ -143,21 +144,34 @@ def appointments():
             flash('Cannot book appointments more than one year in advance!', 'danger')
             return redirect(url_for('appointments'))
         
-        # Check if the time slot is already booked for this doctor
-        time_obj = datetime.strptime(time_str, '%H:%M').time()
-        existing_appointment = Appointment.query.filter_by(
-            doctor_id=doctor_id,
-            date=date_obj,
-            time=time_obj
+        # Convert time strings to time objects
+        start_time_obj = datetime.strptime(start_time_str, '%H:%M').time()
+        end_time_obj = datetime.strptime(end_time_str, '%H:%M').time()
+        
+        # Validate that end time is after start time
+        if end_time_obj <= start_time_obj:
+            flash('End time must be after start time!', 'danger')
+            return redirect(url_for('appointments'))
+        
+        # Check for time conflicts
+        existing_appointment = Appointment.query.filter(
+            Appointment.doctor_id == doctor_id,
+            Appointment.date == date_obj,
+            (
+                (Appointment.start_time <= start_time_obj) & (Appointment.end_time > start_time_obj) |
+                (Appointment.start_time < end_time_obj) & (Appointment.end_time >= end_time_obj) |
+                (Appointment.start_time >= start_time_obj) & (Appointment.end_time <= end_time_obj)
+            )
         ).first()
         
         if existing_appointment:
-            flash('This time slot is already booked for the selected doctor!', 'danger')
+            flash('This time slot conflicts with an existing appointment!', 'danger')
             return redirect(url_for('appointments'))
 
         new_appointment = Appointment(
             date=date_obj,
-            time=time_obj,
+            start_time=start_time_obj,
+            end_time=end_time_obj,
             diagnosis=diagnosis,
             patient_id=patient_id,
             doctor_id=doctor_id
@@ -184,7 +198,7 @@ def appointments():
         query = Appointment.query
     
     # Get paginated results
-    appointments_pagination = query.order_by(Appointment.date.desc(), Appointment.time.desc()).paginate(
+    appointments_pagination = query.order_by(Appointment.date.desc(), Appointment.start_time.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
@@ -208,7 +222,11 @@ def appointments():
         key = f"{appt.doctor_id}_{appt.date}"
         if key not in booked_slots:
             booked_slots[key] = []
-        booked_slots[key].append(appt.time.strftime('%H:%M'))
+        # Store both start and end times
+        booked_slots[key].append({
+            'start': appt.start_time.strftime('%H:%M'),
+            'end': appt.end_time.strftime('%H:%M')
+        })
     
     return render_template('appointments.html', 
                          appointments=appointments_pagination.items,
@@ -341,8 +359,12 @@ def delete_doctor(doctor_id):
 @app.route("/logout")
 @login_required
 def logout():
+    # Clear any existing flash messages
+    from flask import get_flashed_messages
+    get_flashed_messages()  # This clears the flash messages queue
+    
     logout_user()
-    flash("Logged out successfully!")
+    flash("Logged out successfully!", "info")  # Use a different category if needed
     return redirect(url_for("login"))
 
 

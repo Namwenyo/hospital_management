@@ -63,14 +63,22 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Time</label>
-                        <select name="time" id="appointmentTime" class="form-select" required>
-                            <option value="" disabled selected>Select Time</option>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Start Time</label>
+                        <select name="start_time" id="startTime" class="form-select" required>
+                            <option value="" disabled selected>Start Time</option>
+                            <!-- Time slots will be populated by JavaScript -->
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">End Time</label>
+                        <select name="end_time" id="endTime" class="form-select" required>
+                            <option value="" disabled selected>End Time</option>
                             <!-- Time slots will be populated by JavaScript -->
                         </select>
                         <div class="form-text text-danger" id="timeError" style="display: none;">
-                            This time slot is already booked
+                            This time slot conflicts with an existing appointment
                         </div>
                         <div class="form-text" id="availabilityInfo">
                             Select a doctor and date to see available times
@@ -119,7 +127,7 @@
                         {% for a in appointments %}
                         <tr>
                             <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ a.time.strftime('%H:%M') }}</td>
+                            <td>{{ a.start_time.strftime('%H:%M') }} - {{ a.end_time.strftime('%H:%M') }}</td>
                             <td>{{ a.patient.first_name }} {{ a.patient.surname }}</td>
                             <td>{{ a.doctor.name }}</td>
                             <td><span class="badge bg-info text-dark">{{ a.doctor.specialization }}</span></td>
@@ -173,7 +181,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButton = document.getElementById('toggleAppointmentForm');
     const cancelButton = document.getElementById('cancelAppointment');
     const dateInput = document.getElementById('appointmentDate');
-    const timeSelect = document.getElementById('appointmentTime');
+    const startTimeSelect = document.getElementById('startTime');
+    const endTimeSelect = document.getElementById('endTime');
     const doctorSelect = document.getElementById('doctorSelect');
     const dateError = document.getElementById('dateError');
     const timeError = document.getElementById('timeError');
@@ -181,7 +190,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitButton = document.getElementById('submitAppointment');
     
     // Convert Python booked_slots to JavaScript object
-    // We'll use a data attribute to pass the value from Flask to JS
     var bookedSlots = {};
     var bookedSlotsElement = document.getElementById('bookedSlotsData');
     if (bookedSlotsElement) {
@@ -209,15 +217,32 @@ document.addEventListener('DOMContentLoaded', function() {
         return slots;
     }
     
-    // Get available time slots for selected doctor and date
-    function getAvailableTimeSlots(doctorId, dateString) {
-        var allSlots = generateTimeSlots();
+    // Check if a time slot is available
+    function isTimeSlotAvailable(doctorId, dateString, startTime, endTime) {
         var key = doctorId + '_' + dateString;
         var bookedForThisSlot = bookedSlots[key] || [];
         
-        return allSlots.filter(function(slot) {
-            return bookedForThisSlot.indexOf(slot) === -1;
-        });
+        // Convert start and end times to minutes for easier comparison
+        function timeToMinutes(timeStr) {
+            var parts = timeStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+        
+        var startMinutes = timeToMinutes(startTime);
+        var endMinutes = timeToMinutes(endTime);
+        
+        // Check for conflicts with existing appointments
+        for (var i = 0; i < bookedForThisSlot.length; i++) {
+            var bookedStart = timeToMinutes(bookedForThisSlot[i].start);
+            var bookedEnd = timeToMinutes(bookedForThisSlot[i].end);
+            
+            // Check for overlap
+            if ((startMinutes < bookedEnd) && (endMinutes > bookedStart)) {
+                return false; // Conflict found
+            }
+        }
+        
+        return true; // No conflicts
     }
     
     // Update time slots based on selected doctor and date
@@ -225,7 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var doctorId = doctorSelect.value;
         var dateValue = dateInput.value;
         
-        timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
+        startTimeSelect.innerHTML = '<option value="" disabled selected>Start Time</option>';
+        endTimeSelect.innerHTML = '<option value="" disabled selected>End Time</option>';
         timeError.style.display = 'none';
         
         if (!doctorId || !dateValue) {
@@ -233,7 +259,23 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        var availableSlots = getAvailableTimeSlots(doctorId, dateValue);
+        var allSlots = generateTimeSlots();
+        var availableSlots = [];
+        
+        // Find available start times
+        for (var i = 0; i < allSlots.length - 1; i++) { // -1 because we need at least 30 min duration
+            var startTime = allSlots[i];
+            var endTime = allSlots[i + 1]; // Minimum 30-minute appointment
+            
+            if (isTimeSlotAvailable(doctorId, dateValue, startTime, endTime)) {
+                availableSlots.push(startTime);
+                
+                var option = document.createElement('option');
+                option.value = startTime;
+                option.textContent = startTime;
+                startTimeSelect.appendChild(option);
+            }
+        }
         
         if (availableSlots.length === 0) {
             availabilityInfo.textContent = 'No available time slots for this doctor on the selected date';
@@ -241,14 +283,29 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             availabilityInfo.textContent = availableSlots.length + ' available time slot(s)';
             availabilityInfo.className = 'form-text text-success';
+        }
+    }
+    
+    // Update end time options based on selected start time
+    function updateEndTimeOptions() {
+        var startTime = startTimeSelect.value;
+        if (!startTime) return;
+        
+        endTimeSelect.innerHTML = '<option value="" disabled selected>End Time</option>';
+        
+        var allSlots = generateTimeSlots();
+        var startIndex = allSlots.indexOf(startTime);
+        
+        if (startIndex === -1) return;
+        
+        // Add end time options (minimum 30 minutes, maximum until end of day)
+        for (var i = startIndex + 1; i < allSlots.length; i++) {
+            var endTime = allSlots[i];
             
-            for (var i = 0; i < availableSlots.length; i++) {
-                var slot = availableSlots[i];
-                var option = document.createElement('option');
-                option.value = slot;
-                option.textContent = slot;
-                timeSelect.appendChild(option);
-            }
+            var option = document.createElement('option');
+            option.value = endTime;
+            option.textContent = endTime;
+            endTimeSelect.appendChild(option);
         }
     }
     
@@ -303,6 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners for doctor and date changes
     doctorSelect.addEventListener('change', updateTimeSlots);
     dateInput.addEventListener('change', updateTimeSlots);
+    startTimeSelect.addEventListener('change', updateEndTimeOptions);
     
     // Function to check if date is a weekday (Monday-Friday)
     function isWeekday(dateString) {
@@ -342,9 +400,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
-            if (!timeSelect.value) {
+            if (!startTimeSelect.value || !endTimeSelect.value) {
                 e.preventDefault();
-                alert('Please select an available time slot.');
+                alert('Please select both start and end times.');
+                return false;
+            }
+            
+            // Validate that end time is after start time
+            var startTime = startTimeSelect.value;
+            var endTime = endTimeSelect.value;
+            
+            if (endTime <= startTime) {
+                e.preventDefault();
+                alert('End time must be after start time.');
                 return false;
             }
         });
