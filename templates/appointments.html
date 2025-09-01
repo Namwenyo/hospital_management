@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+            <i class="fas fa-calendar-check me-2" style="color: #9b59b6;"></i>Appointment Management
+        </h2>
+        <button class="btn btn-primary" id="toggleAppointmentForm">
+            <i class="fas fa-plus me-1"></i>Add New Appointment
+        </button>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('appointments') }}" class="row g-3">
+                <div class="col-md-8">
+                    <input type="text" class="form-control" name="search" placeholder="Search appointments by patient or doctor name..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-search me-1"></i>Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Appointment Form (Initially Hidden) -->
+    <div class="card mb-4 shadow-sm" id="appointmentForm" style="display: none;">
+        <div class="card-header py-3" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;">
+            <h5 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>Book New Appointment</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('appointments') }}" id="appointmentBookingForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Patient</label>
+                        <select name="patient_id" class="form-select" required id="patientSelect">
+                            <option value="" disabled selected>Select Patient</option>
+                            {% for p in patients %}
+                            <option value="{{ p.id }}">{{ p.first_name }} {{ p.surname }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Doctor</label>
+                        <select name="doctor_id" class="form-select" required id="doctorSelect">
+                            <option value="" disabled selected>Select Doctor</option>
+                            {% for d in doctors %}
+                            <option value="{{ d.id }}">{{ d.name }} ({{ d.specialization }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="date" id="appointmentDate" class="form-control" required>
+                        <div class="form-text text-danger" id="dateError" style="display: none;">
+                            Appointments are only available Monday to Friday and cannot be more than one year in advance
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Time</label>
+                        <select name="time" id="appointmentTime" class="form-select" required>
+                            <option value="" disabled selected>Select Time</option>
+                            <!-- Time slots will be populated by JavaScript -->
+                        </select>
+                        <div class="form-text text-danger" id="timeError" style="display: none;">
+                            This time slot is already booked
+                        </div>
+                        <div class="form-text" id="availabilityInfo">
+                            Select a doctor and date to see available times
+                        </div>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">Diagnosis Notes</label>
+                        <textarea name="diagnosis" class="form-control" placeholder="Enter diagnosis notes (optional)"></textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success me-2" id="submitAppointment">
+                            <i class="fas fa-calendar-check me-1"></i>Book Appointment
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="cancelAppointment">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Appointments Table -->
+    <div class="card shadow-sm">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Appointments</h5>
+            <span class="badge bg-light text-dark">{{ appointments|length }} appointment(s)</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead style="background-color: #ecf0f1;">
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Specialization</th>
+                            <th>Diagnosis</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in appointments %}
+                        <tr>
+                            <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ a.time.strftime('%H:%M') }}</td>
+                            <td>{{ a.patient.first_name }} {{ a.patient.surname }}</td>
+                            <td>{{ a.doctor.name }}</td>
+                            <td><span class="badge bg-info text-dark">{{ a.doctor.specialization }}</span></td>
+                            <td>
+                                {% if a.diagnosis %}
+                                    {{ a.diagnosis|truncate(30) }}
+                                {% else %}
+                                    <span class="text-muted">Not diagnosed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('delete_appointment', appointment_id=a.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this appointment?')">
+                                    <i class="fas fa-trash me-1"></i>Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">No appointments found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav class="d-flex justify-content-center mt-4">
+                <ul class="pagination">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('appointments', page=page-1, search=search_query) }}">Previous</a>
+                    </li>
+                    {% for p_num in range(1, total_pages + 1) %}
+                    <li class="page-item {% if p_num == page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('appointments', page=p_num, search=search_query) }}">{{ p_num }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('appointments', page=page+1, search=search_query) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const appointmentForm = document.getElementById('appointmentForm');
+    const toggleButton = document.getElementById('toggleAppointmentForm');
+    const cancelButton = document.getElementById('cancelAppointment');
+    const dateInput = document.getElementById('appointmentDate');
+    const timeSelect = document.getElementById('appointmentTime');
+    const doctorSelect = document.getElementById('doctorSelect');
+    const dateError = document.getElementById('dateError');
+    const timeError = document.getElementById('timeError');
+    const availabilityInfo = document.getElementById('availabilityInfo');
+    const submitButton = document.getElementById('submitAppointment');
+    
+    // Convert Python booked_slots to JavaScript object
+    // We'll use a data attribute to pass the value from Flask to JS
+    var bookedSlots = {};
+    var bookedSlotsElement = document.getElementById('bookedSlotsData');
+    if (bookedSlotsElement) {
+        try {
+            bookedSlots = JSON.parse(bookedSlotsElement.textContent);
+        } catch (e) {
+            console.error('Error parsing booked slots:', e);
+        }
+    }
+    
+    // Generate time slots from 8:00 AM to 6:00 PM in 30-minute intervals
+    function generateTimeSlots() {
+        var slots = [];
+        for (var hour = 8; hour <= 17; hour++) {
+            for (var minute = 0; minute < 60; minute += 30) {
+                // Skip times after 5:30 PM (17:30)
+                if (hour === 17 && minute > 0) break;
+                
+                var hourStr = hour < 10 ? '0' + hour : hour.toString();
+                var minuteStr = minute < 10 ? '0' + minute : minute.toString();
+                var timeString = hourStr + ':' + minuteStr;
+                slots.push(timeString);
+            }
+        }
+        return slots;
+    }
+    
+    // Get available time slots for selected doctor and date
+    function getAvailableTimeSlots(doctorId, dateString) {
+        var allSlots = generateTimeSlots();
+        var key = doctorId + '_' + dateString;
+        var bookedForThisSlot = bookedSlots[key] || [];
+        
+        return allSlots.filter(function(slot) {
+            return bookedForThisSlot.indexOf(slot) === -1;
+        });
+    }
+    
+    // Update time slots based on selected doctor and date
+    function updateTimeSlots() {
+        var doctorId = doctorSelect.value;
+        var dateValue = dateInput.value;
+        
+        timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
+        timeError.style.display = 'none';
+        
+        if (!doctorId || !dateValue) {
+            availabilityInfo.textContent = 'Select a doctor and date to see available times';
+            return;
+        }
+        
+        var availableSlots = getAvailableTimeSlots(doctorId, dateValue);
+        
+        if (availableSlots.length === 0) {
+            availabilityInfo.textContent = 'No available time slots for this doctor on the selected date';
+            availabilityInfo.className = 'form-text text-danger';
+        } else {
+            availabilityInfo.textContent = availableSlots.length + ' available time slot(s)';
+            availabilityInfo.className = 'form-text text-success';
+            
+            for (var i = 0; i < availableSlots.length; i++) {
+                var slot = availableSlots[i];
+                var option = document.createElement('option');
+                option.value = slot;
+                option.textContent = slot;
+                timeSelect.appendChild(option);
+            }
+        }
+    }
+    
+    // Toggle form visibility
+    toggleButton.addEventListener('click', function() {
+        if (appointmentForm.style.display === 'none') {
+            appointmentForm.style.display = 'block';
+            toggleButton.innerHTML = '<i class="fas fa-eye me-1"></i>View Appointments';
+            toggleButton.classList.remove('btn-primary');
+            toggleButton.classList.add('btn-secondary');
+        } else {
+            appointmentForm.style.display = 'none';
+            toggleButton.innerHTML = '<i class="fas fa-plus me-1"></i>Add New Appointment';
+            toggleButton.classList.remove('btn-secondary');
+            toggleButton.classList.add('btn-primary');
+        }
+    });
+    
+    // Cancel button handler
+    cancelButton.addEventListener('click', function() {
+        appointmentForm.style.display = 'none';
+        toggleButton.innerHTML = '<i class="fas fa-plus me-1"></i>Add New Appointment';
+        toggleButton.classList.remove('btn-secondary');
+        toggleButton.classList.add('btn-primary');
+    });
+    
+    // Set maximum date to one year from today
+    var today = new Date();
+    var maxDate = new Date();
+    maxDate.setFullYear(today.getFullYear() + 1);
+    
+    var yyyy = today.getFullYear();
+    var mm = today.getMonth() + 1;
+    var dd = today.getDate();
+    
+    if (mm < 10) mm = '0' + mm;
+    if (dd < 10) dd = '0' + dd;
+    
+    var minDate = yyyy + '-' + mm + '-' + dd;
+    dateInput.min = minDate;
+    
+    var maxYYYY = maxDate.getFullYear();
+    var maxMM = maxDate.getMonth() + 1;
+    var maxDD = maxDate.getDate();
+    
+    if (maxMM < 10) maxMM = '0' + maxMM;
+    if (maxDD < 10) maxDD = '0' + maxDD;
+    
+    var maxDateStr = maxYYYY + '-' + maxMM + '-' + maxDD;
+    dateInput.max = maxDateStr;
+    
+    // Event listeners for doctor and date changes
+    doctorSelect.addEventListener('change', updateTimeSlots);
+    dateInput.addEventListener('change', updateTimeSlots);
+    
+    // Function to check if date is a weekday (Monday-Friday)
+    function isWeekday(dateString) {
+        var date = new Date(dateString);
+        var day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        return day !== 0 && day !== 6; // Not Sunday or Saturday
+    }
+    
+    // Validate date input
+    dateInput.addEventListener('change', function() {
+        if (!isWeekday(this.value)) {
+            dateError.style.display = 'block';
+            if (submitButton) submitButton.disabled = true;
+        } else {
+            dateError.style.display = 'none';
+            if (submitButton) submitButton.disabled = false;
+        }
+        updateTimeSlots();
+    });
+    
+    // Form submission validation
+    var appointmentFormElem = document.getElementById('appointmentBookingForm');
+    if (appointmentFormElem) {
+        appointmentFormElem.addEventListener('submit', function(e) {
+            if (!isWeekday(dateInput.value)) {
+                e.preventDefault();
+                dateError.style.display = 'block';
+                alert('Please select a weekday (Monday-Friday) for your appointment.');
+                return false;
+            }
+            
+            // Check if date is more than a year ahead
+            var selectedDate = new Date(dateInput.value);
+            if (selectedDate > maxDate) {
+                e.preventDefault();
+                alert('Cannot book appointments more than one year in advance.');
+                return false;
+            }
+            
+            if (!timeSelect.value) {
+                e.preventDefault();
+                alert('Please select an available time slot.');
+                return false;
+            }
+        });
+    }
+});
+</script>
+
+<!-- Add this hidden element to pass data from Flask to JavaScript -->
+<script id="bookedSlotsData" type="application/json">
+{{ booked_slots|tojson }}
+</script>
+
+<style>
+.form-text {
+    margin-top: 5px;
+    font-size: 0.875rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.card {
+    border-radius: 10px;
+    border: none;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+</style>
+
+{% endblock %}

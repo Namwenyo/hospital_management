@@ -1,0 +1,126 @@
+/* Ensure proper spacing for fixed header */
+body {
+    padding-top: 76px; /* Height of fixed navbar */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Fixed navbar styling */
+.navbar {
+    background-color: #1a1d20 !important;
+    padding: 0.8rem 0;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.navbar-nav .nav-link {
+    color: #ffffff !important;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    margin: 0 0.2rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    background-color: rgba(255, 203, 116, 0.1);
+    color: #FFCB74 !important;
+    transform: translateY(-1px);
+}
+
+/* Main content */
+main {
+    flex: 1 0 auto;
+    padding-top: 2rem;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #1a1d20 !important;
+    margin-top: auto;
+}
+
+footer a {
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: #FFCB74 !important;
+    text-decoration: none;
+}
+
+footer .list-unstyled li {
+    transition: transform 0.2s ease;
+}
+
+footer .list-unstyled li:hover {
+    transform: translateX(5px);
+}
+
+/* Social Media Icons */
+footer .fa-facebook-f:hover {
+    color: #3b5998 !important;
+}
+
+footer .fa-twitter:hover {
+    color: #1da1f2 !important;
+}
+
+footer .fa-linkedin-in:hover {
+    color: #0077b5 !important;
+}
+
+footer .fa-instagram:hover {
+    color: #e4405f !important;
+}
+
+/* Custom gold color for accents */
+.text-gold {
+    color: #FFCB74 !important;
+}
+
+.bg-gold {
+    background-color: #FFCB74 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    body {
+        padding-top: 70px;
+    }
+    
+    .navbar-nav .nav-link {
+        margin: 0.2rem 0;
+        text-align: center;
+    }
+    
+    main {
+        padding-top: 1rem;
+    }
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Button hover effects */
+.btn-primary {
+    background-color: #FFCB74;
+    border-color: #FFCB74;
+    color: #1a1d20;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background-color: #e6b466;
+    border-color: #e6b466;
+    color: #1a1d20;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
