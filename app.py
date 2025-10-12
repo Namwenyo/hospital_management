@@ -228,6 +228,11 @@ def appointments():
             'end': appt.end_time.strftime('%H:%M')
         })
     
+    max_allowed_date = date.today() + timedelta(days=365)
+    
+    # ADD THIS LINE - Get today's date for status comparison
+    today_date = date.today()
+    
     return render_template('appointments.html', 
                          appointments=appointments_pagination.items,
                          patients=patients,
@@ -235,7 +240,9 @@ def appointments():
                          search_query=search_query,
                          page=page,
                          total_pages=total_pages,
-                         booked_slots=booked_slots)
+                         booked_slots=booked_slots,
+                         max_allowed_date=max_allowed_date.strftime('%Y-%m-%d'),
+                         today_date=today_date)  # ADD THIS PARAMETER
 
 @app.route('/delete_appointment/<int:appointment_id>')
 @login_required
@@ -286,6 +293,8 @@ def login():
 @app.route('/doctors')
 @login_required
 def doctors():
+    from datetime import date
+
     search_query = request.args.get('search', '')
     if search_query:
         doctors = Doctor.query.filter(
@@ -295,7 +304,10 @@ def doctors():
     else:
         doctors = Doctor.query.all()
     
-    return render_template('doctors.html', doctors=doctors, search_query=search_query)
+    # Add today_date for status comparison in the template
+    today_date = date.today()
+    
+    return render_template('doctors.html', doctors=doctors, search_query=search_query, today_date=today_date)
 
 @app.route('/add_doctor', methods=['GET', 'POST'])
 def add_doctor():
@@ -367,9 +379,205 @@ def logout():
     flash("Logged out successfully!", "info")  # Use a different category if needed
     return redirect(url_for("login"))
 
+@app.route('/doctor_availability', methods=['GET', 'POST'])
+@login_required
+def doctor_availability():
+    # Handle appointment creation from availability page
+    if request.method == 'POST':
+        date_str = request.form['date']  
+        start_time_str = request.form['start_time']  
+        end_time_str = request.form['end_time']  
+        diagnosis = request.form.get('diagnosis', '')
+        patient_id = request.form['patient_id']
+        doctor_id = request.form['doctor_id']
+
+        # Validate date is not more than a year ahead
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        max_allowed_date = date.today() + timedelta(days=365)
+        
+        if date_obj > max_allowed_date:
+            flash('Cannot book appointments more than one year in advance!', 'danger')
+            return redirect(url_for('doctor_availability', date=date_str))
+        
+        # Validate weekday
+        if date_obj.weekday() >= 5:  # 5=Saturday, 6=Sunday
+            flash('Appointments are only available Monday to Friday!', 'danger')
+            return redirect(url_for('doctor_availability', date=date_str))
+        
+        # Convert time strings to time objects
+        start_time_obj = datetime.strptime(start_time_str, '%H:%M').time()
+        end_time_obj = datetime.strptime(end_time_str, '%H:%M').time()
+        
+        # Validate that end time is after start time
+        if end_time_obj <= start_time_obj:
+            flash('End time must be after start time!', 'danger')
+            return redirect(url_for('doctor_availability', date=date_str))
+        
+        # Check for time conflicts
+        existing_appointment = Appointment.query.filter(
+            Appointment.doctor_id == doctor_id,
+            Appointment.date == date_obj,
+            (
+                (Appointment.start_time <= start_time_obj) & (Appointment.end_time > start_time_obj) |
+                (Appointment.start_time < end_time_obj) & (Appointment.end_time >= end_time_obj) |
+                (Appointment.start_time >= start_time_obj) & (Appointment.end_time <= end_time_obj)
+            )
+        ).first()
+        
+        if existing_appointment:
+            flash('This time slot conflicts with an existing appointment!', 'danger')
+            return redirect(url_for('doctor_availability', date=date_str))
+
+        new_appointment = Appointment(
+            date=date_obj,
+            start_time=start_time_obj,
+            end_time=end_time_obj,
+            diagnosis=diagnosis,
+            patient_id=patient_id,
+            doctor_id=doctor_id
+        )
+        db.session.add(new_appointment)
+        db.session.commit()
+        flash("Appointment booked successfully!", 'success')
+        return redirect(url_for('doctor_availability', date=date_str))
+
+    # Handle GET request - show availability
+    selected_date = request.args.get('date')
+    if selected_date:
+        try:
+            selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = date.today()
+    else:
+        selected_date = date.today()
+    
+    # Check if selected date is weekend
+    is_weekend = selected_date.weekday() >= 5
+    
+    # Get all doctors
+    doctors = Doctor.query.all()
+    patients = Patient.query.all()  # Add this for the booking form
+    
+    # Get appointments for the selected date
+    appointments = Appointment.query.filter(Appointment.date == selected_date).all()
+    
+    # Create availability data structure
+    availability_data = []
+    
+    # Define working hours (8:00 AM to 6:00 PM)
+    working_hours_start = datetime.strptime('08:00', '%H:%M').time()
+    working_hours_end = datetime.strptime('18:00', '%H:%M').time()
+    
+    for doctor in doctors:
+        # Get doctor's appointments for the selected date
+        doctor_appointments = [appt for appt in appointments if appt.doctor_id == doctor.id]
+        
+        # Sort appointments by start time
+        doctor_appointments.sort(key=lambda x: x.start_time)
+        
+        # Calculate available time slots (only if not weekend)
+        available_slots = []
+        total_available_minutes = 0
+        total_available_hours = 0
+        availability_percentage = 0
+        
+        if not is_weekend:
+            current_time = working_hours_start
+            
+            for appointment in doctor_appointments:
+                # If there's a gap before the appointment, it's available
+                if current_time < appointment.start_time:
+                    slot_duration = (datetime.combine(selected_date, appointment.start_time) - 
+                                   datetime.combine(selected_date, current_time)).seconds // 60
+                    available_slots.append({
+                        'start': current_time,
+                        'end': appointment.start_time,
+                        'duration': slot_duration
+                    })
+                    total_available_minutes += slot_duration
+                
+                # Move current time to after this appointment
+                current_time = appointment.end_time
+            
+            # Check for availability after the last appointment
+            if current_time < working_hours_end:
+                slot_duration = (datetime.combine(selected_date, working_hours_end) - 
+                               datetime.combine(selected_date, current_time)).seconds // 60
+                available_slots.append({
+                    'start': current_time,
+                    'end': working_hours_end,
+                    'duration': slot_duration
+                })
+                total_available_minutes += slot_duration
+            
+            total_available_hours = total_available_minutes / 60
+            availability_percentage = (total_available_minutes / (10 * 60)) * 100  # 10 hours total
+        
+        availability_data.append({
+            'doctor': doctor,
+            'appointments': doctor_appointments,
+            'available_slots': available_slots,
+            'total_available_minutes': total_available_minutes,
+            'total_available_hours': total_available_hours,
+            'availability_percentage': availability_percentage
+        })
+    
+    # Format dates for template
+    today = date.today()
+    min_date = today
+    max_date = today + timedelta(days=30)  # Show availability for next 30 days
+    
+    # Get booked appointments for the next 7 days to show availability
+    seven_days_later = today + timedelta(days=7)
+    booked_appointments = Appointment.query.filter(
+        Appointment.date >= today,
+        Appointment.date <= seven_days_later
+    ).all()
+    
+    # Create a structure of booked time slots by doctor and date
+    booked_slots = {}
+    for appt in booked_appointments:
+        key = f"{appt.doctor_id}_{appt.date}"
+        if key not in booked_slots:
+            booked_slots[key] = []
+        # Store both start and end times
+        booked_slots[key].append({
+            'start': appt.start_time.strftime('%H:%M'),
+            'end': appt.end_time.strftime('%H:%M')
+        })
+    
+    # Prepare detailed appointments data for JSON - FIXED: Use different variable name
+    detailed_appointments_json = {}
+    for doctor_data in availability_data:  # Changed variable name to avoid conflict
+        doctor_appointments_list = []
+        for appointment in doctor_data['appointments']:  # Access as dictionary
+            doctor_appointments_list.append({
+                'id': appointment.id,
+                'patient_name': f"{appointment.patient.first_name} {appointment.patient.surname}",
+                'patient_phone': appointment.patient.phone or 'N/A',
+                # 'patient_email': appointment.patient.email or 'N/A',
+                'start_time': appointment.start_time.strftime('%H:%M') if appointment.start_time else '',
+                'end_time': appointment.end_time.strftime('%H:%M') if appointment.end_time else '',
+                'diagnosis': appointment.diagnosis or 'No diagnosis notes',
+                'date_created': appointment.date_created.strftime('%Y-%m-%d %H:%M') if appointment.date_created else 'N/A',
+                'status': 'Today' if appointment.date == today else 'Upcoming' if appointment.date > today else 'Completed'
+            })
+        detailed_appointments_json[str(doctor_data['doctor'].id)] = doctor_appointments_list
+    
+    return render_template('doctor_availability.html',
+                         availability_data=availability_data,
+                         selected_date=selected_date,
+                         today=today,
+                         min_date=min_date,
+                         max_date=max_date,
+                         is_weekend=is_weekend,
+                         patients=patients,
+                         booked_slots=booked_slots,
+                         appointments_json=detailed_appointments_json)  # Use the fixed variable name
+
 
 with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
-    app.run(host= "0.0.0.0", port=5000, debug=True)
+    app.run(host= "0.0.0.0", port=8000, debug=True)

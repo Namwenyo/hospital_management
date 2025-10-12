@@ -3,7 +3,7 @@
 
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;"> 
             <i class="fas fa-calendar-check me-2" style="color: #9b59b6;"></i>Appointment Management
         </h2>
         <button class="btn btn-primary" id="toggleAppointmentForm">
@@ -29,7 +29,7 @@
 
     <!-- Appointment Form (Initially Hidden) -->
     <div class="card mb-4 shadow-sm" id="appointmentForm" style="display: none;">
-        <div class="card-header py-3" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;">
+        <div class="card-header py-3" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;"> 
             <h5 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>Book New Appointment</h5>
         </div>
         <div class="card-body">
@@ -44,17 +44,15 @@
                             {% endfor %}
                         </select>
                     </div>
-
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Doctor</label>
                         <select name="doctor_id" class="form-select" required id="doctorSelect">
                             <option value="" disabled selected>Select Doctor</option>
                             {% for d in doctors %}
-                            <option value="{{ d.id }}">{{ d.name }} ({{ d.specialization }})</option>
+                            <option value="{{ d.id }}">{{ d.name }} - {{ d.specialization }}</option>
                             {% endfor %}
                         </select>
                     </div>
-
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Date</label>
                         <input type="date" name="date" id="appointmentDate" class="form-control" required>
@@ -62,7 +60,6 @@
                             Appointments are only available Monday to Friday and cannot be more than one year in advance
                         </div>
                     </div>
-
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Start Time</label>
                         <select name="start_time" id="startTime" class="form-select" required>
@@ -70,7 +67,6 @@
                             <!-- Time slots will be populated by JavaScript -->
                         </select>
                     </div>
-
                     <div class="col-md-3 mb-3">
                         <label class="form-label">End Time</label>
                         <select name="end_time" id="endTime" class="form-select" required>
@@ -84,12 +80,10 @@
                             Select a doctor and date to see available times
                         </div>
                     </div>
-
                     <div class="col-12 mb-3">
                         <label class="form-label">Diagnosis Notes</label>
                         <textarea name="diagnosis" class="form-control" placeholder="Enter diagnosis notes (optional)"></textarea>
                     </div>
-
                     <div class="col-12">
                         <button type="submit" class="btn btn-success me-2" id="submitAppointment">
                             <i class="fas fa-calendar-check me-1"></i>Book Appointment
@@ -105,7 +99,7 @@
 
     <!-- Appointments Table -->
     <div class="card shadow-sm">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;"> 
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Appointments</h5>
             <span class="badge bg-light text-dark">{{ appointments|length }} appointment(s)</span>
         </div>
@@ -119,6 +113,7 @@
                             <th>Patient</th>
                             <th>Doctor</th>
                             <th>Specialization</th>
+                            <th>Status</th>
                             <th>Diagnosis</th>
                             <th>Actions</th>
                         </tr>
@@ -132,27 +127,43 @@
                             <td>{{ a.doctor.name }}</td>
                             <td><span class="badge bg-info text-dark">{{ a.doctor.specialization }}</span></td>
                             <td>
-                                {% if a.diagnosis %}
-                                    {{ a.diagnosis|truncate(30) }}
+                                {% set appointment_date = a.date %}
+                                {% set today = today_date %}
+                                {% if appointment_date < today %}
+                                    <span class="badge bg-secondary">Completed</span>
+                                {% elif appointment_date == today %}
+                                    <span class="badge bg-warning text-dark">Today</span>
                                 {% else %}
-                                    <span class="text-muted">Not diagnosed</span>
+                                    <span class="badge bg-success">Upcoming</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('delete_appointment', appointment_id=a.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this appointment?')">
-                                    <i class="fas fa-trash me-1"></i>Delete
-                                </a>
+                                {% if a.diagnosis %}
+                                {{ a.diagnosis|truncate(30) }}
+                                {% else %}
+                                <span class="text-muted">Not diagnosed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewAppointmentModal{{ a.id }}">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </button>
+                                    <a href="{{ url_for('delete_appointment', appointment_id=a.id) }}" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to delete this appointment?')">
+                                        <i class="fas fa-trash me-1"></i>Delete
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="7" class="text-center py-4">No appointments found.</td>
+                            <td colspan="8" class="text-center py-4">No appointments found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- Pagination -->
             {% if total_pages > 1 %}
             <nav class="d-flex justify-content-center mt-4">
@@ -175,6 +186,197 @@
     </div>
 </div>
 
+<!-- View Appointment Modals (one for each appointment) -->
+{% for a in appointments %}
+<div class="modal fade" id="viewAppointmentModal{{ a.id }}" tabindex="-1" aria-labelledby="viewAppointmentModalLabel{{ a.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border: 1px solid #e3f2fd; border-radius: 12px; overflow: hidden;">
+            <!-- Modal Header -->
+            <div class="modal-header" style="background: #9b59b6; color: white; border-bottom: 1px solid #8e44ad;">
+                <h5 class="modal-title" id="viewAppointmentModalLabel{{ a.id }}">
+                    <i class="fas fa-calendar-alt me-2"></i>Appointment Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body" style="background-color: #f8f9fa;">
+                <!-- Appointment Information Card -->
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 10px; background: #ffffff; border: 1px solid #e3f2fd;">
+                    <div class="card-header bg-white" style="border-bottom: 1px solid #e3f2fd; border-radius: 10px 10px 0 0;">
+                        <h6 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+                            <i class="fas fa-info-circle me-2" style="color: #9b59b6;"></i>Appointment Information
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Appointment ID</div>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">#{{ a.id }}</div>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Date & Time</div>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        <i class="fas fa-calendar me-2" style="color: #9b59b6;"></i>
+                                        {{ a.date.strftime('%A, %B %d, %Y') }}
+                                    </div>
+                                    <div class="detail-value" style="color: #7f8c8d; font-size: 1rem;">
+                                        <i class="fas fa-clock me-2" style="color: #9b59b6;"></i>
+                                        {{ a.start_time.strftime('%H:%M') }} - {{ a.end_time.strftime('%H:%M') }}
+                                    </div>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Status</div>
+                                    <div class="detail-value">
+                                        {% set appointment_date = a.date %}
+                                        {% set today = today_date %}
+                                        {% if appointment_date < today %}
+                                            <span class="badge bg-secondary fs-6">Completed</span>
+                                        {% elif appointment_date == today %}
+                                            <span class="badge bg-warning text-dark fs-6">Today</span>
+                                        {% else %}
+                                            <span class="badge bg-success fs-6">Upcoming</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Duration</div>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        <i class="fas fa-hourglass-half me-2" style="color: #9b59b6;"></i>
+                                        {% set duration = (a.end_time.hour * 60 + a.end_time.minute) - (a.start_time.hour * 60 + a.start_time.minute) %}
+                                        {{ duration }} minutes
+                                    </div>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Date Created</div>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        <i class="fas fa-calendar-plus me-2" style="color: #9b59b6;"></i>
+                                        {{ a.date_created.strftime('%B %d, %Y at %H:%M') if a.date_created else 'N/A' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patient Information Card -->
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 10px; background: #ffffff; border: 1px solid #e3f2fd;">
+                    <div class="card-header bg-white" style="border-bottom: 1px solid #e3f2fd; border-radius: 10px 10px 0 0;">
+                        <h6 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+                            <i class="fas fa-user-injured me-2" style="color: #9b59b6;"></i>Patient Information
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Full Name</div>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        {{ a.patient.first_name }} {{ a.patient.surname }}
+                                    </div>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Date of Birth</div>
+                                    <div class="detail-value" style="color: #7f8c8d; font-size: 1rem;">
+                                        {{ a.patient.date_of_birth.strftime('%B %d, %Y') if a.patient.date_of_birth else 'N/A' }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Contact</div>
+                                    <div class="detail-value" style="color: #7f8c8d; font-size: 1rem;">
+                                        <i class="fas fa-phone me-2" style="color: #9b59b6;"></i>
+                                        {{ a.patient.phone if a.patient.phone else 'N/A' }}
+                                    </div>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Email</div>
+                                    <div class="detail-value" style="color: #7f8c8d; font-size: 1rem;">
+                                        <i class="fas fa-envelope me-2" style="color: #9b59b6;"></i>
+                                        {{ a.patient.email if a.patient.email else 'N/A' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Doctor Information Card -->
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 10px; background: #ffffff; border: 1px solid #e3f2fd;">
+                    <div class="card-header bg-white" style="border-bottom: 1px solid #e3f2fd; border-radius: 10px 10px 0 0;">
+                        <h6 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+                            <i class="fas fa-user-md me-2" style="color: #9b59b6;"></i>Doctor Information
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Doctor Name</div>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        Dr. {{ a.doctor.name }}
+                                    </div>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Specialization</div>
+                                    <div class="detail-value">
+                                        <span class="badge bg-info text-dark fs-6">{{ a.doctor.specialization }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item mb-3">
+                                    <div class="detail-label text-muted small">Total Appointments</div>
+                                    <div class="detail-value" style="color: #7f8c8d; font-size: 1rem;">
+                                        <i class="fas fa-calendar-check me-2" style="color: #9b59b6;"></i>
+                                        {{ a.doctor.appointments|length if a.doctor.appointments else 0 }} appointment(s)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagnosis Information Card -->
+                <div class="card shadow-sm border-0" style="border-radius: 10px; background: #ffffff; border: 1px solid #e3f2fd;">
+                    <div class="card-header bg-white" style="border-bottom: 1px solid #e3f2fd; border-radius: 10px 10px 0 0;">
+                        <h6 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+                            <i class="fas fa-file-medical me-2" style="color: #9b59b6;"></i>Diagnosis & Notes
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if a.diagnosis %}
+                        <div class="diagnosis-content p-3" style="background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #9b59b6;">
+                            <p class="mb-0" style="color: #2c3e50; line-height: 1.6;">{{ a.diagnosis }}</p>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-file-medical fa-2x text-muted mb-3"></i>
+                            <p class="text-muted mb-0">No diagnosis notes available for this appointment</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light" style="border-top: 1px solid #e3f2fd;">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
+                    <i class="fas fa-times me-1"></i>Close
+                </button>
+                <a href="{{ url_for('delete_appointment', appointment_id=a.id) }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this appointment?')" style="border-radius: 8px; font-weight: 600;">
+                    <i class="fas fa-trash-alt me-1"></i>Delete Appointment
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const appointmentForm = document.getElementById('appointmentForm');
@@ -188,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeError = document.getElementById('timeError');
     const availabilityInfo = document.getElementById('availabilityInfo');
     const submitButton = document.getElementById('submitAppointment');
-    
+
     // Convert Python booked_slots to JavaScript object
     var bookedSlots = {};
     var bookedSlotsElement = document.getElementById('bookedSlotsData');
@@ -199,15 +401,41 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error parsing booked slots:', e);
         }
     }
-    
+
+    // Set maximum date to one year from today
+    var today = new Date();
+    var maxDate = new Date();
+    maxDate.setFullYear(today.getFullYear() + 1);
+
+    // Format dates for input min/max attributes
+    var yyyy = today.getFullYear();
+    var mm = today.getMonth() + 1;
+    var dd = today.getDate();
+
+    if (mm < 10) mm = '0' + mm;
+    if (dd < 10) dd = '0' + dd;
+
+    var minDate = yyyy + '-' + mm + '-' + dd;
+    dateInput.min = minDate;
+
+    var maxYYYY = maxDate.getFullYear();
+    var maxMM = maxDate.getMonth() + 1;
+    var maxDD = maxDate.getDate();
+
+    if (maxMM < 10) maxMM = '0' + maxMM;
+    if (maxDD < 10) maxDD = '0' + maxDD;
+
+    var maxDateStr = maxYYYY + '-' + maxMM + '-' + maxDD;
+    dateInput.max = maxDateStr;
+
     // Generate time slots from 8:00 AM to 6:00 PM in 30-minute intervals
     function generateTimeSlots() {
         var slots = [];
         for (var hour = 8; hour <= 17; hour++) {
             for (var minute = 0; minute < 60; minute += 30) {
                 // Skip times after 5:30 PM (17:30)
-                if (hour === 17 && minute > 0) break;
-                
+                if (hour == 17 && minute > 0) break;
+
                 var hourStr = hour < 10 ? '0' + hour : hour.toString();
                 var minuteStr = minute < 10 ? '0' + minute : minute.toString();
                 var timeString = hourStr + ':' + minuteStr;
@@ -216,68 +444,68 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return slots;
     }
-    
+
     // Check if a time slot is available
     function isTimeSlotAvailable(doctorId, dateString, startTime, endTime) {
         var key = doctorId + '_' + dateString;
         var bookedForThisSlot = bookedSlots[key] || [];
-        
+
         // Convert start and end times to minutes for easier comparison
         function timeToMinutes(timeStr) {
             var parts = timeStr.split(':');
             return parseInt(parts[0]) * 60 + parseInt(parts[1]);
         }
-        
+
         var startMinutes = timeToMinutes(startTime);
         var endMinutes = timeToMinutes(endTime);
-        
+
         // Check for conflicts with existing appointments
         for (var i = 0; i < bookedForThisSlot.length; i++) {
             var bookedStart = timeToMinutes(bookedForThisSlot[i].start);
             var bookedEnd = timeToMinutes(bookedForThisSlot[i].end);
-            
+
             // Check for overlap
             if ((startMinutes < bookedEnd) && (endMinutes > bookedStart)) {
                 return false; // Conflict found
             }
         }
-        
+
         return true; // No conflicts
     }
-    
+
     // Update time slots based on selected doctor and date
     function updateTimeSlots() {
         var doctorId = doctorSelect.value;
         var dateValue = dateInput.value;
-        
+
         startTimeSelect.innerHTML = '<option value="" disabled selected>Start Time</option>';
         endTimeSelect.innerHTML = '<option value="" disabled selected>End Time</option>';
         timeError.style.display = 'none';
-        
+
         if (!doctorId || !dateValue) {
             availabilityInfo.textContent = 'Select a doctor and date to see available times';
+            availabilityInfo.className = 'form-text';
             return;
         }
-        
+
         var allSlots = generateTimeSlots();
         var availableSlots = [];
         
         // Find available start times
-        for (var i = 0; i < allSlots.length - 1; i++) { // -1 because we need at least 30 min duration
+        for (var i = 0; i < allSlots.length - 1; i++) {
             var startTime = allSlots[i];
-            var endTime = allSlots[i + 1]; // Minimum 30-minute appointment
-            
+            var endTime = allSlots[i + 1];
+
             if (isTimeSlotAvailable(doctorId, dateValue, startTime, endTime)) {
                 availableSlots.push(startTime);
-                
                 var option = document.createElement('option');
                 option.value = startTime;
                 option.textContent = startTime;
                 startTimeSelect.appendChild(option);
             }
         }
-        
-        if (availableSlots.length === 0) {
+
+        if (availableSlots.length == 0) {
             availabilityInfo.textContent = 'No available time slots for this doctor on the selected date';
             availabilityInfo.className = 'form-text text-danger';
         } else {
@@ -285,30 +513,61 @@ document.addEventListener('DOMContentLoaded', function() {
             availabilityInfo.className = 'form-text text-success';
         }
     }
-    
+
     // Update end time options based on selected start time
     function updateEndTimeOptions() {
         var startTime = startTimeSelect.value;
         if (!startTime) return;
-        
+
         endTimeSelect.innerHTML = '<option value="" disabled selected>End Time</option>';
-        
+
         var allSlots = generateTimeSlots();
         var startIndex = allSlots.indexOf(startTime);
-        
+
         if (startIndex === -1) return;
-        
+
         // Add end time options (minimum 30 minutes, maximum until end of day)
         for (var i = startIndex + 1; i < allSlots.length; i++) {
             var endTime = allSlots[i];
-            
             var option = document.createElement('option');
             option.value = endTime;
             option.textContent = endTime;
             endTimeSelect.appendChild(option);
         }
     }
-    
+
+    // Function to check if date is a weekday (Monday-Friday)
+    function isWeekday(dateString) {
+        var date = new Date(dateString);
+        var day = date.getDay();
+        return day != 0 && day != 6;
+    }
+
+    // Validate date input
+    dateInput.addEventListener('change', function() {
+        var selectedDate = new Date(this.value);
+        
+        // Check if it's a weekday
+        if (!isWeekday(this.value)) {
+            dateError.style.display = 'block';
+            if (submitButton) submitButton.disabled = true;
+            return;
+        } else {
+            dateError.style.display = 'none';
+        }
+        
+        // Check if date is more than a year ahead
+        if (selectedDate > maxDate) {
+            alert('Cannot book appointments more than one year in advance.');
+            this.value = '';
+            if (submitButton) submitButton.disabled = true;
+        } else {
+            if (submitButton) submitButton.disabled = false;
+        }
+        
+        updateTimeSlots();
+    });
+
     // Toggle form visibility
     toggleButton.addEventListener('click', function() {
         if (appointmentForm.style.display === 'none') {
@@ -323,7 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleButton.classList.add('btn-primary');
         }
     });
-    
+
     // Cancel button handler
     cancelButton.addEventListener('click', function() {
         appointmentForm.style.display = 'none';
@@ -331,85 +590,43 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleButton.classList.remove('btn-secondary');
         toggleButton.classList.add('btn-primary');
     });
-    
-    // Set maximum date to one year from today
-    var today = new Date();
-    var maxDate = new Date();
-    maxDate.setFullYear(today.getFullYear() + 1);
-    
-    var yyyy = today.getFullYear();
-    var mm = today.getMonth() + 1;
-    var dd = today.getDate();
-    
-    if (mm < 10) mm = '0' + mm;
-    if (dd < 10) dd = '0' + dd;
-    
-    var minDate = yyyy + '-' + mm + '-' + dd;
-    dateInput.min = minDate;
-    
-    var maxYYYY = maxDate.getFullYear();
-    var maxMM = maxDate.getMonth() + 1;
-    var maxDD = maxDate.getDate();
-    
-    if (maxMM < 10) maxMM = '0' + maxMM;
-    if (maxDD < 10) maxDD = '0' + maxDD;
-    
-    var maxDateStr = maxYYYY + '-' + maxMM + '-' + maxDD;
-    dateInput.max = maxDateStr;
-    
+
     // Event listeners for doctor and date changes
     doctorSelect.addEventListener('change', updateTimeSlots);
     dateInput.addEventListener('change', updateTimeSlots);
     startTimeSelect.addEventListener('change', updateEndTimeOptions);
-    
-    // Function to check if date is a weekday (Monday-Friday)
-    function isWeekday(dateString) {
-        var date = new Date(dateString);
-        var day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-        return day !== 0 && day !== 6; // Not Sunday or Saturday
-    }
-    
-    // Validate date input
-    dateInput.addEventListener('change', function() {
-        if (!isWeekday(this.value)) {
-            dateError.style.display = 'block';
-            if (submitButton) submitButton.disabled = true;
-        } else {
-            dateError.style.display = 'none';
-            if (submitButton) submitButton.disabled = false;
-        }
-        updateTimeSlots();
-    });
-    
+
     // Form submission validation
     var appointmentFormElem = document.getElementById('appointmentBookingForm');
     if (appointmentFormElem) {
         appointmentFormElem.addEventListener('submit', function(e) {
+            // Validate weekday
             if (!isWeekday(dateInput.value)) {
                 e.preventDefault();
                 dateError.style.display = 'block';
                 alert('Please select a weekday (Monday-Friday) for your appointment.');
                 return false;
             }
-            
-            // Check if date is more than a year ahead
+
+            // Validate date is not more than a year ahead
             var selectedDate = new Date(dateInput.value);
             if (selectedDate > maxDate) {
                 e.preventDefault();
                 alert('Cannot book appointments more than one year in advance.');
                 return false;
             }
-            
+
+            // Validate time selection
             if (!startTimeSelect.value || !endTimeSelect.value) {
                 e.preventDefault();
                 alert('Please select both start and end times.');
                 return false;
             }
-            
+
             // Validate that end time is after start time
             var startTime = startTimeSelect.value;
             var endTime = endTimeSelect.value;
-            
+
             if (endTime <= startTime) {
                 e.preventDefault();
                 alert('End time must be after start time.');
@@ -450,6 +667,59 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .btn:hover {
     transform: translateY(-1px);
+}
+
+/* Date validation styles */
+input:invalid {
+    border-color: #dc3545;
+}
+
+input:valid {
+    border-color: #28a745;
+}
+
+.form-text.text-danger {
+    display: none;
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Detail item styles */
+.detail-item {
+    padding: 8px 0;
+}
+
+.detail-label {
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+}
+
+.detail-value {
+    font-size: 1.1rem;
+    color: #2c3e50;
+}
+
+/* Status badge styles */
+.badge {
+    font-weight: 500;
+}
+
+/* Modal positioning fix */
+.modal-dialog {
+    margin-top: 80px !important;
+}
+
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+.modal {
+    z-index: 1050 !important;
+}
+
+.navbar.fixed-top {
+    z-index: 1030 !important;
 }
 </style>
 

@@ -1,6 +1,258 @@
+/* Medical Background Animation */
+.medical-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #f8f9fa 100%);
+}
+
+/* DNA Strand Animation */
+.dna-strand {
+    position: absolute;
+    width: 4px;
+    background: linear-gradient(to bottom, transparent, #3498db, transparent);
+    animation: dnaFloat 40s infinite linear;
+}
+
+.dna-strand::before,
+.dna-strand::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #e74c3c;
+    animation: dnaPulse 2s infinite ease-in-out;
+}
+
+.dna-strand::before {
+    top: 0;
+    left: -4px;
+}
+
+.dna-strand::after {
+    bottom: 0;
+    right: -4px;
+}
+
+.dna-1 {
+    left: 10%;
+    height: 200px;
+    animation-delay: 0s;
+}
+
+.dna-2 {
+    left: 30%;
+    height: 300px;
+    animation-delay: 5s;
+}
+
+.dna-3 {
+    left: 70%;
+    height: 250px;
+    animation-delay: 10s;
+}
+
+@keyframes dnaFloat {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+    }
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+    }
+}
+
+@keyframes dnaPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 1;
+    }
+}
+
+/* ECG Heartbeat Lines */
+.ecg-line {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #e74c3c, transparent);
+    animation: ecgBeat 4s infinite ease-in-out;
+}
+
+.ecg-1 {
+    top: 25%;
+    width: 300px;
+    animation-delay: 0s;
+}
+
+.ecg-2 {
+    top: 65%;
+    width: 400px;
+    animation-delay: 2s;
+}
+
+@keyframes ecgBeat {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scaleX(0.8);
+    }
+    25% {
+        opacity: 1;
+        transform: scaleX(1.2);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scaleX(1);
+    }
+    75% {
+        opacity: 1;
+        transform: scaleX(1.1);
+    }
+}
+
+/* Floating Medical Icons */
+.medical-icon {
+    position: absolute;
+    font-size: 2rem;
+    color: rgba(52, 152, 219, 0.6);
+    animation: floatIcon 20s infinite ease-in-out;
+    text-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+}
+
+.medical-icon:hover {
+    color: #e74c3c;
+    text-shadow: 0 0 20px rgba(231, 76, 60, 0.6);
+}
+
+.icon-1 {
+    top: 15%;
+    left: 15%;
+    animation-delay: 0s;
+}
+
+.icon-2 {
+    top: 80%;
+    left: 25%;
+    animation-delay: 3s;
+}
+
+.icon-3 {
+    top: 40%;
+    left: 80%;
+    animation-delay: 6s;
+}
+
+.icon-4 {
+    top: 70%;
+    left: 60%;
+    animation-delay: 9s;
+}
+
+.icon-5 {
+    top: 25%;
+    left: 50%;
+    animation-delay: 12s;
+}
+
+.icon-6 {
+    top: 55%;
+    left: 10%;
+    animation-delay: 15s;
+}
+
+@keyframes floatIcon {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg) scale(1);
+        opacity: 0.4;
+    }
+    25% {
+        transform: translateY(-20px) rotate(5deg) scale(1.1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateY(10px) rotate(-5deg) scale(1.05);
+        opacity: 0.6;
+    }
+    75% {
+        transform: translateY(-15px) rotate(3deg) scale(1.08);
+        opacity: 0.8;
+    }
+}
+
+/* Pulse Dots */
+.pulse-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2ecc71;
+    animation: pulse 3s infinite ease-in-out;
+}
+
+.dot-1 {
+    top: 20%;
+    left: 85%;
+    animation-delay: 0s;
+}
+
+.dot-2 {
+    top: 45%;
+    left: 5%;
+    animation-delay: 1s;
+}
+
+.dot-3 {
+    top: 75%;
+    left: 90%;
+    animation-delay: 2s;
+}
+
+.dot-4 {
+    top: 35%;
+    left: 95%;
+    animation-delay: 3s;
+}
+
+.dot-5 {
+    top: 85%;
+    left: 15%;
+    animation-delay: 4s;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4);
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.8;
+        box-shadow: 0 0 0 10px rgba(46, 204, 113, 0);
+    }
+}
+
+/* Ensure content stays above animation */
+body {
+    position: relative;
+    z-index: 1;
+}
+
+main {
+    position: relative;
+    z-index: 2;
+}
+
+/* Your existing styles below... */
 /* Ensure proper spacing for fixed header */
 body {
-    padding-top: 76px; /* Height of fixed navbar */
+    padding-top: 76px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -93,14 +345,19 @@ footer .fa-instagram:hover {
     body {
         padding-top: 70px;
     }
-    
     .navbar-nav .nav-link {
         margin: 0.2rem 0;
         text-align: center;
     }
-    
     main {
         padding-top: 1rem;
+    }
+    /* Reduce animation intensity on mobile */
+    .medical-icon {
+        font-size: 1.5rem;
+    }
+    .dna-strand {
+        display: none;
     }
 }
 
@@ -123,4 +380,37 @@ html {
     color: #1a1d20;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Fix modal backdrop and positioning */
+.modal {
+    backdrop-filter: blur(5px);
+}
+
+.modal-dialog {
+    margin-top: 80px; /* Adjust this value based on your header height */
+    margin-bottom: 80px;
+}
+
+.modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+}
+
+/* Ensure modal is above everything */
+.modal-backdrop {
+    z-index: 1040;
+}
+
+.modal {
+    z-index: 1050;
+}
+
+/* For mobile devices */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin-top: 60px;
+        margin-bottom: 60px;
+    }
 }

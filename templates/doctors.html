@@ -3,8 +3,8 @@
 
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;">
-            <i class="fas fa-user-md me-2" style="color: #27ae60;"></i>Doctor Management
+        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;"> 
+            <i class="fas fa-user-md me-2" style="color: #3498db;"></i>Doctor Management
         </h2>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDoctorModal">
             <i class="fas fa-plus me-1"></i>Add New Doctor
@@ -12,14 +12,14 @@
     </div>
 
     <!-- Search Form -->
-    <div class="card mb-4 shadow-sm">
+    <div class="card mb-4 shadow-sm" style="background: #ffffff; border: 1px solid #e3f2fd;">
         <div class="card-body">
             <form method="GET" action="{{ url_for('doctors') }}" class="row g-3">
                 <div class="col-md-8">
-                    <input type="text" class="form-control" name="search" placeholder="Search doctors by name or specialization..." value="{{ search_query }}">
+                    <input type="text" class="form-control" name="search" placeholder="Search doctors by name or specialization..." value="{{ search_query }}" style="border-radius: 8px; border: 1px solid #e3f2fd;">
                 </div>
                 <div class="col-md-4">
-                    <button type="submit" class="btn btn-outline-primary w-100">
+                    <button type="submit" class="btn btn-primary w-100" style="border-radius: 8px; font-weight: 600; background: #3498db; border-color: #3498db;">
                         <i class="fas fa-search me-1"></i>Search
                     </button>
                 </div>
@@ -27,72 +27,79 @@
         </div>
     </div>
 
-    <!-- Doctors Table -->
-    <div class="card shadow-sm">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #27ae60, #219653); color: white;">
-            <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Doctors</h5>
-            <span class="badge bg-light text-dark">{{ doctors|length }} doctor(s)</span>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead style="background-color: #ecf0f1;">
-                        <tr>
-                            <th>Full Name</th>
-                            <th>Specialization</th>
-                            <th>Appointments</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for d in doctors %}
-                        <tr>
-                            <td>{{ d.name }}</td>
-                            <td><span class="badge bg-info text-dark">{{ d.specialization }}</span></td>
-                            <td>
-                                <span class="badge {% if d.appointments %}bg-success{% else %}bg-secondary{% endif %}">
-                                    {{ d.appointments|length if d.appointments else 0 }} appointment(s)
-                                </span>
-                            </td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewDoctorModal{{ d.id }}">
-                                    <i class="fas fa-eye me-1"></i>View Details
-                                </button>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center py-4">No doctors found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- Doctors Cards Grid -->
+    <div class="row">
+        {% for d in doctors %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card doctor-card shadow-sm h-100" style="border-radius: 12px; border: none; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-left: 4px solid #3498db;">
+                <div class="card-body text-center p-4">
+                    <!-- Doctor Avatar -->
+                    <div class="avatar-placeholder mb-3 mx-auto" style="width: 80px; height: 80px; background: linear-gradient(135deg, #3498db, #2c3e50); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);">
+                        <i class="fas fa-user-md fa-2x text-white"></i>
+                    </div>
+                    
+                    <!-- Doctor Name -->
+                    <h5 class="card-title mb-1" style="color: #2c3e50; font-weight: 700;">Dr. {{ d.name }}</h5>
+                    
+                    <!-- Specialization -->
+                    <span class="badge mb-3" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 20px;">{{ d.specialization }}</span>
+                    
+                    <!-- Appointment Count - FIXED BADGE -->
+                    <div class="mb-3">
+                        <span class="badge {% if d.appointments %}bg-success{% else %}bg-secondary{% endif %}" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 15px;">
+                            {% if d.appointments %}Available{% else %}Not Available{% endif %}
+                        </span>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="small text-muted mb-3">
+                        <div><i class="fas fa-calendar-plus me-1" style="color: #7f8c8d;"></i>Joined: {{ d.date_created.strftime('%b %d, %Y') if d.date_created else 'N/A' }}</div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#viewDoctorModal{{ d.id }}" style="background: linear-gradient(135deg, #3498db, #2980b9); border: none; border-radius: 8px; font-weight: 600;">
+                            <i class="fas fa-eye me-1"></i>View Details
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
+        {% else %}
+        <div class="col-12">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 1px solid #e3f2fd;">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-user-md fa-3x mb-3" style="color: #bdc3c7;"></i>
+                    <h5 class="text-muted">No doctors found</h5>
+                    <p class="text-muted">Add your first doctor to get started</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
 <!-- Add Doctor Modal -->
 <div class="modal fade" id="addDoctorModal" tabindex="-1" aria-labelledby="addDoctorModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content" style="border-radius: 12px; border: 1px solid #e3f2fd;">
+            <div class="modal-header" style="background: #3498db; color: white; border-radius: 12px 12px 0 0; border-bottom: 1px solid #2980b9;">
                 <h5 class="modal-title" id="addDoctorModalLabel">Add New Doctor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('add_doctor') }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">First Name</label>
-                        <input type="text" name="first_name" class="form-control" placeholder="John" required>
+                        <input type="text" name="first_name" class="form-control" placeholder="John" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Surname</label>
-                        <input type="text" name="surname" class="form-control" placeholder="Smith" required>
+                        <input type="text" name="surname" class="form-control" placeholder="Smith" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Specialization</label>
-                        <input type="text" name="specialization" class="form-control" list="specializationOptions" placeholder="Type or select a specialization" required>
+                        <input type="text" name="specialization" class="form-control" list="specializationOptions" placeholder="Type or select a specialization" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
                         <datalist id="specializationOptions">
                             <option value="Cardiology">
                             <option value="Dermatology">
@@ -109,9 +116,9 @@
                         <div class="form-text">Type your own specialization or select from the suggestions</div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                <div class="modal-footer" style="border-top: 1px solid #e3f2fd;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background: #3498db; border: none; border-radius: 8px; font-weight: 600;">
                         <i class="fas fa-user-md me-1"></i>Add Doctor
                     </button>
                 </div>
@@ -124,11 +131,11 @@
 {% for d in doctors %}
 <div class="modal fade" id="viewDoctorModal{{ d.id }}" tabindex="-1" aria-labelledby="viewDoctorModalLabel{{ d.id }}" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="border: none; border-radius: 12px; overflow: hidden;">
+        <div class="modal-content" style="border: 1px solid #e3f2fd; border-radius: 12px; overflow: hidden;">
             <!-- Modal Header -->
-            <div class="modal-header" style="background: linear-gradient(135deg, #27ae60, #219653); color: white; border-bottom: none;">
+            <div class="modal-header" style="background: #3498db; color: white; border-bottom: 1px solid #2980b9;">
                 <h5 class="modal-title" id="viewDoctorModalLabel{{ d.id }}">
-                    <i class="fas fa-user-md me-2"></i>Doctor Details
+                    <i class="fas fa-user-md me-2"></i>Doctor Details - Dr. {{ d.name }}
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -136,41 +143,38 @@
             <!-- Modal Body -->
             <div class="modal-body" style="background-color: #f8f9fa;">
                 <!-- Professional Information Card -->
-                <div class="card shadow-sm border-0" style="border-radius: 10px;">
-                    <div class="card-header bg-white" style="border-bottom: 1px solid #e9ecef;">
-                        <h6 class="mb-0" style="color: #2c3e50;">
-                            <i class="fas fa-info-circle me-2 text-success"></i>Professional Information
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 10px; background: #ffffff; border: 1px solid #e3f2fd;">
+                    <div class="card-header bg-white" style="border-bottom: 1px solid #e3f2fd; border-radius: 10px 10px 0 0;">
+                        <h6 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+                            <i class="fas fa-info-circle me-2" style="color: #3498db;"></i>Professional Information
                         </h6>
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <!-- Left Column -->
                             <div class="col-md-6">
                                 <div class="detail-item mb-3">
                                     <div class="detail-label text-muted small">Full Name</div>
-                                    <div class="detail-value fw-medium">Dr. {{ d.name }}</div>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">Dr. {{ d.name }}</div>
                                 </div>
                                 <div class="detail-item mb-3">
                                     <div class="detail-label text-muted small">Specialization</div>
-                                    <div class="detail-value fw-medium">
-                                        <i class="fas fa-stethoscope me-2 text-success"></i>{{ d.specialization }}
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        <i class="fas fa-stethoscope me-2" style="color: #3498db;"></i>{{ d.specialization }}
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Right Column -->
                             <div class="col-md-6">
                                 <div class="detail-item mb-3">
                                     <div class="detail-label text-muted small">Total Appointments</div>
-                                    <div class="detail-value fw-medium">
-                                        <i class="fas fa-calendar-check me-2 text-success"></i>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        <i class="fas fa-calendar-check me-2" style="color: #3498db;"></i>
                                         {{ d.appointments|length if d.appointments else 0 }} appointment(s)
                                     </div>
                                 </div>
                                 <div class="detail-item mb-3">
                                     <div class="detail-label text-muted small">Date Added</div>
-                                    <div class="detail-value fw-medium">
-                                        <i class="fas fa-calendar-plus me-2 text-success"></i>
+                                    <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
+                                        <i class="fas fa-calendar-plus me-2" style="color: #3498db;"></i>
                                         {{ d.date_created.strftime('%B %d, %Y') if d.date_created else 'N/A' }}
                                     </div>
                                 </div>
@@ -178,22 +182,151 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Appointments Section -->
+                <div class="card shadow-sm border-0" style="border-radius: 10px; background: #ffffff; border: 1px solid #e3f2fd;">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-bottom: 1px solid #e3f2fd; border-radius: 10px 10px 0 0;">
+                        <h6 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+                            <i class="fas fa-calendar-alt me-2" style="color: #3498db;"></i>Recent Appointments
+                        </h6>
+                        <span class="badge bg-primary">{{ d.appointments|length if d.appointments else 0 }}</span>
+                    </div>
+                    <div class="card-body">
+                        {% if d.appointments %}
+                            {% set sorted_appointments = d.appointments|sort(attribute='date', reverse=true) %}
+                            {% set recent_appointments = sorted_appointments[:2] %}
+                            {% set remaining_appointments = sorted_appointments[2:] %}
+                            
+                            <!-- Recent Appointments (First 2) -->
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Time</th>
+                                            <th>Patient</th>
+                                            <th>Diagnosis</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for appointment in recent_appointments %}
+                                        <tr>
+                                            <td>{{ appointment.date.strftime('%Y-%m-%d') }}</td>
+                                            <td>{{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }}</td>
+                                            <td>{{ appointment.patient.first_name }} {{ appointment.patient.surname }}</td>
+                                            <td>
+                                                {% if appointment.diagnosis %}
+                                                    <span class="badge bg-info text-dark" data-bs-toggle="tooltip" title="{{ appointment.diagnosis }}">
+                                                        {{ appointment.diagnosis|truncate(20) }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Not diagnosed</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set appointment_date = appointment.date %}
+                                                {% if today_date %}
+                                                    {% set today = today_date %}
+                                                    {% if appointment_date < today %}
+                                                        <span class="badge bg-secondary">Completed</span>
+                                                    {% elif appointment_date == today %}
+                                                        <span class="badge bg-warning text-dark">Today</span>
+                                                    {% else %}
+                                                        <span class="badge bg-success">Upcoming</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-info">Scheduled</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Remaining Appointments (Hidden by default) -->
+                            {% if remaining_appointments %}
+                            <div id="remainingAppointments{{ d.id }}" style="display: none;">
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Time</th>
+                                                <th>Patient</th>
+                                                <th>Diagnosis</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for appointment in remaining_appointments %}
+                                            <tr>
+                                                <td>{{ appointment.date.strftime('%Y-%m-%d') }}</td>
+                                                <td>{{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }}</td>
+                                                <td>{{ appointment.patient.first_name }} {{ appointment.patient.surname }}</td>
+                                                <td>
+                                                    {% if appointment.diagnosis %}
+                                                        <span class="badge bg-info text-dark" data-bs-toggle="tooltip" title="{{ appointment.diagnosis }}">
+                                                            {{ appointment.diagnosis|truncate(20) }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Not diagnosed</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% set appointment_date = appointment.date %}
+                                                    {% if today_date %}
+                                                        {% set today = today_date %}
+                                                        {% if appointment_date < today %}
+                                                            <span class="badge bg-secondary">Completed</span>
+                                                        {% elif appointment_date == today %}
+                                                            <span class="badge bg-warning text-dark">Today</span>
+                                                        {% else %}
+                                                            <span class="badge bg-success">Upcoming</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="badge bg-info">Scheduled</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- View More/Less Button -->
+                            <div class="text-center mt-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleAppointments('{{ d.id }}')" id="toggleBtn{{ d.id }}" style="border-radius: 8px;">
+                                    <i class="fas fa-chevron-down me-1"></i>View More ({{ remaining_appointments|length }} more)
+                                </button>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-2x text-muted mb-3"></i>
+                            <p class="text-muted mb-0">No appointments scheduled</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            
+
             <!-- Modal Footer -->
-            <div class="modal-footer bg-light" style="border-top: 1px solid #e9ecef;">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <div class="modal-footer bg-light" style="border-top: 1px solid #e3f2fd;">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
                     <i class="fas fa-times me-1"></i>Close
                 </button>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editDoctorModal{{ d.id }}" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editDoctorModal{{ d.id }}" data-bs-dismiss="modal" style="background: #3498db; border: none; border-radius: 8px; font-weight: 600;">
                     <i class="fas fa-edit me-1"></i>Edit Doctor
                 </button>
                 {% if not d.appointments %}
-                <a href="{{ url_for('delete_doctor', doctor_id=d.id) }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this doctor? This action cannot be undone.')">
+                <a href="{{ url_for('delete_doctor', doctor_id=d.id) }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this doctor? This action cannot be undone.')" style="border-radius: 8px; font-weight: 600;">
                     <i class="fas fa-trash-alt me-1"></i>Delete Doctor
                 </a>
                 {% else %}
-                <button type="button" class="btn btn-danger" disabled data-bs-toggle="tooltip" title="Doctors with appointments cannot be deleted">
+                <button type="button" class="btn btn-danger" disabled data-bs-toggle="tooltip" title="Doctors with appointments cannot be deleted" style="border-radius: 8px; font-weight: 600;">
                     <i class="fas fa-trash-alt me-1"></i>Delete Doctor
                 </button>
                 {% endif %}
@@ -207,24 +340,24 @@
 {% for d in doctors %}
 <div class="modal fade" id="editDoctorModal{{ d.id }}" tabindex="-1" aria-labelledby="editDoctorModalLabel{{ d.id }}" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content" style="border-radius: 12px; border: 1px solid #e3f2fd;">
+            <div class="modal-header" style="background: #3498db; color: white; border-radius: 12px 12px 0 0; border-bottom: 1px solid #2980b9;">
                 <h5 class="modal-title" id="editDoctorModalLabel{{ d.id }}">Edit Doctor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('edit_doctor', doctor_id=d.id) }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">First Name</label>
-                        <input type="text" class="form-control" name="first_name" value="{{ d.first_name }}" required>
+                        <input type="text" class="form-control" name="first_name" value="{{ d.first_name }}" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Surname</label>
-                        <input type="text" class="form-control" name="surname" value="{{ d.surname }}" required>
+                        <input type="text" class="form-control" name="surname" value="{{ d.surname }}" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Specialization</label>
-                        <input type="text" class="form-control" name="specialization" value="{{ d.specialization }}" list="specializationOptions" required>
+                        <input type="text" class="form-control" name="specialization" value="{{ d.specialization }}" list="specializationOptions" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
                         <datalist id="specializationOptions">
                             <option value="Cardiology">
                             <option value="Dermatology">
@@ -241,9 +374,9 @@
                         <div class="form-text">Type your own specialization or select from the suggestions</div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                <div class="modal-footer" style="border-top: 1px solid #e3f2fd;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background: #3498db; border: none; border-radius: 8px; font-weight: 600;">
                         <i class="fas fa-save me-1"></i>Save Changes
                     </button>
                 </div>
@@ -254,26 +387,98 @@
 {% endfor %}
 
 <style>
+.doctor-card {
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    cursor: pointer;
+    border: 1px solid #e3f2fd;
+}
+
+.doctor-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(52, 152, 219, 0.15) !important;
+}
+
+.avatar-placeholder {
+    transition: transform 0.3s ease-in-out;
+}
+
+.doctor-card:hover .avatar-placeholder {
+    transform: scale(1.05);
+}
+
 .detail-item {
     padding: 8px 0;
 }
+
 .detail-label {
     margin-bottom: 4px;
+    font-size: 0.85rem;
 }
+
 .detail-value {
     font-size: 1.1rem;
     color: #2c3e50;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.875rem;
+    background-color: #f8f9fa;
+}
+
+.table td {
+    font-size: 0.875rem;
+    vertical-align: middle;
+    border-color: #e9ecef;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.card {
+    border-radius: 10px;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
 }
 </style>
 
 <script>
 // Initialize tooltips
 document.addEventListener('DOMContentLoaded', function() {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
+
+// Toggle appointments visibility
+function toggleAppointments(doctorId) {
+    var remainingDiv = document.getElementById('remainingAppointments' + doctorId);
+    var toggleBtn = document.getElementById('toggleBtn' + doctorId);
+    
+    if (remainingDiv.style.display === 'none') {
+        remainingDiv.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-up me-1"></i>View Less';
+        toggleBtn.classList.remove('btn-outline-primary');
+        toggleBtn.classList.add('btn-primary');
+    } else {
+        remainingDiv.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-down me-1"></i>View More';
+        toggleBtn.classList.remove('btn-primary');
+        toggleBtn.classList.add('btn-outline-primary');
+    }
+}
 </script>
 
 {% endblock %}
