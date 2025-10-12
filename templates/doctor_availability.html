@@ -1,0 +1,1036 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;"> 
+            <i class="fas fa-calendar-check me-2" style="color: #27ae60;"></i>Doctor Availability
+        </h2>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-success">Available</span>
+            <span class="badge bg-danger">Booked</span>
+            <span class="badge bg-secondary">Outside Hours</span>
+        </div>
+    </div>
+
+    <!-- Date Selection Card -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header py-3" style="background: linear-gradient(135deg, #27ae60, #219a52); color: white;">
+            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Select Date</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('doctor_availability') }}" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Choose Date</label>
+                    <input type="date" 
+                           name="date" 
+                           class="form-control" 
+                           value="{{ selected_date.strftime('%Y-%m-%d') }}"
+                           min="{{ min_date.strftime('%Y-%m-%d') }}"
+                           max="{{ max_date.strftime('%Y-%m-%d') }}"
+                           required>
+                    <div class="form-text">View availability for any weekday within the next 30 days</div>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-search me-1"></i>Check Availability
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{{ url_for('doctor_availability') }}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-sync me-1"></i>Today
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Selected Date Info -->
+    <div class="alert {% if is_weekend %}alert-warning{% else %}alert-info{% endif %} mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Showing availability for:</strong> 
+                {{ selected_date.strftime('%A, %B %d, %Y') }}
+                {% if selected_date == today %}
+                    <span class="badge bg-primary ms-2">Today</span>
+                {% elif selected_date < today %}
+                    <span class="badge bg-secondary ms-2">Past Date</span>
+                {% else %}
+                    <span class="badge bg-success ms-2">Future Date</span>
+                {% endif %}
+                
+                {% if is_weekend %}
+                    <span class="badge bg-warning text-dark ms-2">Weekend - No Appointments</span>
+                {% endif %}
+            </div>
+            <div class="text-muted">
+                Working Hours: 8:00 AM - 6:00 PM
+            </div>
+        </div>
+    </div>
+
+    {% if is_weekend %}
+    <!-- Weekend Message -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-calendar-times fa-3x text-warning mb-3"></i>
+            <h4 class="text-warning">Weekend Schedule</h4>
+            <p class="text-muted">Appointments are not available on weekends (Saturday and Sunday).</p>
+            <p class="text-muted">Please select a weekday (Monday to Friday) to view doctor availability.</p>
+            <a href="{{ url_for('doctor_availability') }}?date={{ today.strftime('%Y-%m-%d') }}" class="btn btn-primary">
+                <i class="fas fa-calendar-day me-1"></i>View Today's Availability
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <!-- Simplified Quick Booking Modal -->
+    <div class="modal fade" id="quickBookModal" tabindex="-1" aria-labelledby="quickBookModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #27ae60, #219a52); color: white;">
+                    <h5 class="modal-title" id="quickBookModalLabel">
+                        <i class="fas fa-calendar-plus me-2"></i>Quick Book Appointment
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ url_for('doctor_availability') }}" id="quickBookForm">
+                    <input type="hidden" name="doctor_id" id="quickBookDoctorId">
+                    <input type="hidden" name="date" id="quickBookDate">
+                    
+                    <div class="modal-body">
+                        <!-- Appointment Details (Read-only) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Appointment Details</label>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row small">
+                                        <div class="col-12 mb-2">
+                                            <strong>Doctor:</strong> 
+                                            <span id="quickBookDoctorName">-</span>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <strong>Date:</strong> 
+                                            <span id="quickBookDateDisplay">-</span>
+                                        </div>
+                                        <div class="col-12">
+                                            <strong>Selected Time:</strong> 
+                                            <span id="quickBookTimeDisplay">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Patient Selection -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Select Patient</label>
+                            <select name="patient_id" class="form-select" required id="quickBookPatientSelect">
+                                <option value="" disabled selected>Choose a patient...</option>
+                                {% for p in patients %}
+                                <option value="{{ p.id }}">{{ p.first_name }} {{ p.surname }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Time Selection -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Select Time</label>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label small">Start Time</label>
+                                    <select name="start_time" class="form-select" required id="quickBookStartTime">
+                                        <option value="" disabled selected>Start Time</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label small">End Time</label>
+                                    <select name="end_time" class="form-select" required id="quickBookEndTime">
+                                        <option value="" disabled selected>End Time</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-text" id="quickBookAvailabilityInfo">
+                                Available time slots will appear after selection
+                            </div>
+                        </div>
+
+                        <!-- Diagnosis Notes -->
+                        <div class="mb-3">
+                            <label class="form-label">Diagnosis Notes (Optional)</label>
+                            <textarea name="diagnosis" class="form-control" placeholder="Enter diagnosis notes..." rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-calendar-check me-1"></i>Book Appointment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View All Appointments Modal -->
+    <div class="modal fade" id="viewAllAppointmentsModal" tabindex="-1" aria-labelledby="viewAllAppointmentsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;">
+                    <h5 class="modal-title" id="viewAllAppointmentsModalLabel">
+                        <i class="fas fa-list me-2"></i>All Appointments
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="viewAllAppointmentsContent">
+                        <!-- Content will be loaded dynamically -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this hidden element to pass full appointments data from Flask to JavaScript -->
+    <div id="appointmentsData" style="display: none;">{{ appointments_json|tojson }}</div>
+
+    <!-- Doctors Availability Grid -->
+    <div class="row">
+        {% for data in availability_data %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center" 
+                     style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-user-md me-2"></i>Dr. {{ data.doctor.name }}
+                    </h6>
+                    <span class="badge bg-light text-dark">{{ data.doctor.specialization }}</span>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Availability Summary -->
+                    <div class="availability-summary mb-3 p-3 rounded" 
+                         style="background-color: #f8f9fa; border-left: 4px solid #27ae60;">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="fw-bold text-primary">{{ data.available_slots|length }}</div>
+                                <small class="text-muted">Available Slots</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-success">{{ "%.1f"|format(data.total_available_hours) }}h</div>
+                                <small class="text-muted">Total Available</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-info">{{ "%.0f"|format(data.availability_percentage) }}%</div>
+                                <small class="text-muted">Availability</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Visualization -->
+                    <div class="timeline-container mb-3">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-clock me-1"></i>Daily Schedule
+                        </h6>
+                        
+                        <!-- Working Hours Timeline -->
+                        <div class="timeline" style="height: 30px; background: #e9ecef; border-radius: 15px; position: relative; margin-bottom: 10px;">
+                            <!-- Available Slots -->
+                            {% for slot in data.available_slots %}
+                            {% set start_percent = ((slot.start.hour * 60 + slot.start.minute) - 480) / 600 * 100 %}
+                            {% set width_percent = (slot.duration / 600 * 100) %}
+                            <div class="available-slot timeline-slot" 
+                                 data-start="{{ start_percent }}" 
+                                 data-width="{{ width_percent }}"
+                                 data-bs-toggle="tooltip" 
+                                 data-date="{{ selected_date.strftime('%Y-%m-%d') }}"
+                                 data-doctor-id="{{ data.doctor.id }}"
+                                 data-start-time="{{ slot.start.strftime('%H:%M') }}"
+                                 data-end-time="{{ slot.end.strftime('%H:%M') }}"
+                                 data-doctor-name="{{ data.doctor.name }}"
+                                 title="Available: {{ slot.start.strftime('%H:%M') }} - {{ slot.end.strftime('%H:%M') }} ({{ slot.duration }} mins)">
+                            </div>
+                            {% endfor %}
+                            
+                            <!-- Booked Appointments -->
+                            {% for appointment in data.appointments %}
+                            {% set start_percent = ((appointment.start_time.hour * 60 + appointment.start_time.minute) - 480) / 600 * 100 %}
+                            {% set end_percent = ((appointment.end_time.hour * 60 + appointment.end_time.minute) - 480) / 600 * 100 %}
+                            {% set width_percent = end_percent - start_percent %}
+                            <div class="booked-slot timeline-slot" 
+                                 data-start="{{ start_percent }}" 
+                                 data-width="{{ width_percent }}"
+                                 data-bs-toggle="tooltip" 
+                                 title="Booked: {{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }} with {{ appointment.patient.first_name }} {{ appointment.patient.surname }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Timeline Labels -->
+                        <div class="d-flex justify-content-between text-muted small">
+                            <span>8:00</span>
+                            <span>11:00</span>
+                            <span>14:00</span>
+                            <span>17:00</span>
+                            <span>18:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Available Time Slots Details -->
+                    <div class="available-slots-details">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-list me-1"></i>Available Time Slots
+                        </h6>
+                        
+                        {% if data.available_slots %}
+                        <div class="slots-container" style="max-height: 150px; overflow-y: auto;">
+                            {% for slot in data.available_slots %}
+                            <div class="slot-item mb-2 p-2 rounded d-flex justify-content-between align-items-center"
+                                 style="background-color: #d5f4e6; border-left: 3px solid #27ae60; cursor: pointer;"
+                                 data-date="{{ selected_date.strftime('%Y-%m-%d') }}"
+                                 data-doctor-id="{{ data.doctor.id }}"
+                                 data-start-time="{{ slot.start.strftime('%H:%M') }}"
+                                 data-end-time="{{ slot.end.strftime('%H:%M') }}"
+                                 data-doctor-name="{{ data.doctor.name }}">
+                                <div>
+                                    <i class="fas fa-clock text-success me-2"></i>
+                                    <strong>{{ slot.start.strftime('%H:%M') }} - {{ slot.end.strftime('%H:%M') }}</strong>
+                                </div>
+                                <span class="badge bg-success">{{ slot.duration }} mins</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3 text-muted">
+                            <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                            <p class="mb-0">No available slots for this date</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Booked Appointments - Show only ONE upcoming appointment -->
+                    {% set upcoming_appointments = data.appointments|selectattr("date", ">=", today)|list %}
+                    {% if upcoming_appointments %}
+                    <div class="booked-appointments mt-3">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-calendar-check me-1"></i>Next Appointment
+                        </h6>
+                        <div class="appointments-list">
+                            {% for appointment in upcoming_appointments[:1] %} <!-- Show only 1 appointment -->
+                            <div class="appointment-item mb-2 p-2 rounded small"
+                                 style="background-color: #fde8e8; border-left: 3px solid #e74c3c;">
+                                <div class="d-flex justify-content-between">
+                                    <strong>{{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }}</strong>
+                                    <span class="badge bg-danger">Booked</span>
+                                </div>
+                                <div class="text-muted">
+                                    {{ appointment.patient.first_name }} {{ appointment.patient.surname }}
+                                    {% if appointment.diagnosis %}
+                                    <br><small>Diagnosis: {{ appointment.diagnosis|truncate(30) }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                            
+                            {% if upcoming_appointments|length > 1 %}
+                            <div class="text-center mt-2">
+                                <small class="text-muted">
+                                    +{{ upcoming_appointments|length - 1 }} more appointment(s) for this day
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Card Footer with Book Appointment Button -->
+                <div class="card-footer bg-transparent">
+                    <div class="d-grid gap-2">
+                        {% if data.available_slots %}
+                        <button class="btn btn-success btn-sm quick-book-all-btn"
+                                data-date="{{ selected_date.strftime('%Y-%m-%d') }}"
+                                data-doctor-id="{{ data.doctor.id }}"
+                                data-doctor-name="{{ data.doctor.name }}"
+                                data-available-slots="{{ data.available_slots|length }}">
+                            <i class="fas fa-calendar-plus me-1"></i>Book Appointment
+                        </button>
+                        {% else %}
+                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                            <i class="fas fa-calendar-times me-1"></i>No Available Slots
+                        </button>
+                        {% endif %}
+                        <button class="btn btn-outline-primary btn-sm view-all-appointments-btn"
+                                data-doctor-id="{{ data.doctor.id }}"
+                                data-doctor-name="{{ data.doctor.name }}"
+                                data-date="{{ selected_date.strftime('%Y-%m-%d') }}"
+                                data-appointments-count="{{ data.appointments|length }}">
+                            <i class="fas fa-list me-1"></i>View All Appointments
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-user-md fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Doctors Found</h5>
+                    <p class="text-muted">Add doctors to see their availability</p>
+                    <a href="{{ url_for('doctors') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add Doctors
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ availability_data|length }}</h3>
+                    <p class="text-muted mb-0">Total Doctors</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">
+                        {{ availability_data|selectattr('available_slots')|list|length }}
+                    </h3>
+                    <p class="text-muted mb-0">Doctors with Availability</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info">
+                        {{ availability_data|map(attribute='available_slots')|map('length')|sum }}
+                    </h3>
+                    <p class="text-muted mb-0">Total Available Slots</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning">
+                        {% set total_hours = 0.0 %}
+                        {% for data in availability_data %}
+                            {% set total_hours = total_hours + data.total_available_hours %}
+                        {% endfor %}
+                        {{ "%.1f"|format(total_hours) }}
+                    </h3>
+                    <p class="text-muted mb-0">Total Available Hours</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    background: #e9ecef;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.timeline-slot {
+    position: absolute;
+    height: 100%;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.available-slot {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+.booked-slot {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.timeline-slot:hover {
+    transform: scaleY(1.2);
+    z-index: 10;
+}
+
+.slot-item:hover {
+    background-color: #b8e6d0 !important;
+    transform: translateX(2px);
+    transition: all 0.2s ease;
+}
+
+.slots-container::-webkit-scrollbar,
+.appointments-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.slots-container::-webkit-scrollbar-track,
+.appointments-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.slots-container::-webkit-scrollbar-thumb,
+.appointments-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.slots-container::-webkit-scrollbar-thumb:hover,
+.appointments-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.availability-summary {
+    border-left: 4px solid #27ae60;
+}
+
+.quick-book-all-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(39, 174, 96, 0.3);
+}
+
+.view-all-appointments-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+}
+
+.appointment-card {
+    border-left: 4px solid #3498db;
+    transition: all 0.2s ease;
+}
+
+.appointment-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+
+<!-- Add this hidden element to pass data from Flask to JavaScript -->
+<div id="bookedSlotsData" style="display: none;">{{ booked_slots|tojson if booked_slots else '{}' }}</div>
+
+<script>
+// Get booked slots data from hidden element
+// Get booked slots data from hidden element
+var bookedSlots = {};
+var bookedSlotsElement = document.getElementById('bookedSlotsData');
+if (bookedSlotsElement && bookedSlotsElement.textContent.trim()) {
+    try {
+        bookedSlots = JSON.parse(bookedSlotsElement.textContent);
+    } catch (e) {
+        console.error('Error parsing booked slots:', e);
+        bookedSlots = {};
+    }
+}
+
+// Simple Quick Book function
+function quickBook(date, doctorId, startTime, endTime, doctorName) {
+    console.log('Quick booking for:', {date, doctorId, startTime, endTime, doctorName});
+    
+    // Set the fixed values (doctor and date)
+    document.getElementById('quickBookDoctorId').value = doctorId;
+    document.getElementById('quickBookDate').value = date;
+    document.getElementById('quickBookDoctorName').textContent = 'Dr. ' + doctorName;
+    
+    // Format and display the date
+    const dateObj = new Date(date + 'T00:00:00');
+    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    document.getElementById('quickBookDateDisplay').textContent = formattedDate;
+    
+    // If a specific time slot was clicked, pre-fill it
+    if (startTime && endTime) {
+        document.getElementById('quickBookStartTime').value = startTime;
+        document.getElementById('quickBookEndTime').value = endTime;
+        document.getElementById('quickBookTimeDisplay').textContent = startTime + ' - ' + endTime;
+    } else {
+        document.getElementById('quickBookTimeDisplay').textContent = 'Please select a time';
+        // Clear time selections
+        document.getElementById('quickBookStartTime').value = '';
+        document.getElementById('quickBookEndTime').value = '';
+    }
+    
+    // Reset patient selection and diagnosis
+    document.getElementById('quickBookPatientSelect').value = '';
+    document.getElementById('quickBookForm').querySelector('textarea[name="diagnosis"]').value = '';
+    
+    // Load available time slots for this doctor and date
+    loadAvailableTimeSlots(doctorId, date);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('quickBookModal'));
+    modal.show();
+}
+
+// Load available time slots (only show available times like in appointments page)
+function loadAvailableTimeSlots(doctorId, date) {
+    const startTimeSelect = document.getElementById('quickBookStartTime');
+    const endTimeSelect = document.getElementById('quickBookEndTime');
+    const availabilityInfo = document.getElementById('quickBookAvailabilityInfo');
+    
+    // Clear existing options
+    startTimeSelect.innerHTML = '<option value="" disabled selected>Start Time</option>';
+    endTimeSelect.innerHTML = '<option value="" disabled selected>End Time</option>';
+    
+    // Get booked slots for this doctor and date
+    const key = doctorId + '_' + date;
+    const bookedForThisSlot = bookedSlots[key] || [];
+    
+    // Generate all possible time slots (8:00 AM to 6:00 PM in 30-minute intervals)
+    const timeSlots = [];
+    for (let hour = 8; hour <= 17; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            // Skip times after 5:30 PM (17:30)
+            if (hour === 17 && minute > 0) break;
+            
+            const hourStr = hour.toString().padStart(2, '0');
+            const minuteStr = minute.toString().padStart(2, '0');
+            timeSlots.push(`${hourStr}:${minuteStr}`);
+        }
+    }
+    
+    // Find available start times (30-minute slots that don't conflict with booked appointments)
+    const availableStartTimes = [];
+    
+    for (let i = 0; i < timeSlots.length - 1; i++) {
+        const startTime = timeSlots[i];
+        const endTime = timeSlots[i + 1];
+        
+        // Check if this time slot is available (no conflict with existing appointments)
+        if (isTimeSlotAvailable(doctorId, date, startTime, endTime, bookedForThisSlot)) {
+            availableStartTimes.push(startTime);
+            
+            const option = document.createElement('option');
+            option.value = startTime;
+            option.textContent = startTime;
+            startTimeSelect.appendChild(option);
+        }
+    }
+    
+    if (availableStartTimes.length === 0) {
+        availabilityInfo.textContent = 'No available time slots for this doctor on the selected date';
+        availabilityInfo.className = 'form-text text-danger';
+    } else {
+        availabilityInfo.textContent = availableStartTimes.length + ' available time slot(s)';
+        availabilityInfo.className = 'form-text text-success';
+    }
+}
+
+// Check if a time slot is available (same logic as appointments page)
+function isTimeSlotAvailable(doctorId, dateString, startTime, endTime, bookedForThisSlot) {
+    // Convert start and end times to minutes for easier comparison
+    function timeToMinutes(timeStr) {
+        const parts = timeStr.split(':');
+        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
+
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+
+    // Check for conflicts with existing appointments
+    for (let i = 0; i < bookedForThisSlot.length; i++) {
+        const bookedStart = timeToMinutes(bookedForThisSlot[i].start);
+        const bookedEnd = timeToMinutes(bookedForThisSlot[i].end);
+
+        // Check for overlap
+        if ((startMinutes < bookedEnd) && (endMinutes > bookedStart)) {
+            return false; // Conflict found
+        }
+    }
+
+    return true; // No conflicts
+}
+
+// Update end time options when start time is selected
+function updateEndTimeOptions() {
+    const startTime = document.getElementById('quickBookStartTime').value;
+    const endTimeSelect = document.getElementById('quickBookEndTime');
+    const doctorId = document.getElementById('quickBookDoctorId').value;
+    const date = document.getElementById('quickBookDate').value;
+    
+    if (!startTime) return;
+    
+    // Clear existing options
+    endTimeSelect.innerHTML = '<option value="" disabled selected>End Time</option>';
+    
+    // Get booked slots for this doctor and date
+    const key = doctorId + '_' + date;
+    const bookedForThisSlot = bookedSlots[key] || [];
+    
+    // Convert start time to minutes for duration calculation
+    function timeToMinutes(timeStr) {
+        const parts = timeStr.split(':');
+        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
+    
+    const startMinutes = timeToMinutes(startTime);
+    
+    // Generate time slots from selected start time onwards
+    const timeSlots = [];
+    for (let hour = 8; hour <= 17; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            if (hour === 17 && minute > 0) break;
+            
+            const hourStr = hour.toString().padStart(2, '0');
+            const minuteStr = minute.toString().padStart(2, '0');
+            const slot = `${hourStr}:${minuteStr}`;
+            
+            // Only add slots that are after the selected start time
+            if (slot > startTime) {
+                const slotMinutes = timeToMinutes(slot);
+                const duration = slotMinutes - startMinutes;
+                
+                // Check if duration is within limits (30 minutes to 2 hours)
+                if (duration >= 30 && duration <= 120) {
+                    // Check if this end time would create a valid, available appointment
+                    if (isTimeSlotAvailable(doctorId, date, startTime, slot, bookedForThisSlot)) {
+                        const option = document.createElement('option');
+                        option.value = slot;
+                        option.textContent = slot;
+                        endTimeSelect.appendChild(option);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Update the time display
+    document.getElementById('quickBookTimeDisplay').textContent = startTime + ' - (select end time)';
+    
+    // Show duration info
+    const availabilityInfo = document.getElementById('quickBookAvailabilityInfo');
+    const availableOptions = endTimeSelect.querySelectorAll('option').length - 1; // Subtract 1 for the disabled option
+    
+    if (availableOptions === 0) {
+        availabilityInfo.textContent = 'No valid end times available (must be 30 mins - 2 hours duration)';
+        availabilityInfo.className = 'form-text text-danger';
+    } else {
+        availabilityInfo.textContent = availableOptions + ' valid end time(s) available (30 mins - 2 hours duration)';
+        availabilityInfo.className = 'form-text text-success';
+    }
+}
+
+// Update time display when end time is selected
+function updateTimeDisplay() {
+    const startTime = document.getElementById('quickBookStartTime').value;
+    const endTime = document.getElementById('quickBookEndTime').value;
+    
+    if (startTime && endTime) {
+        // Calculate and display duration
+        function timeToMinutes(timeStr) {
+            const parts = timeStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+        
+        const startMinutes = timeToMinutes(startTime);
+        const endMinutes = timeToMinutes(endTime);
+        const duration = endMinutes - startMinutes;
+        
+        document.getElementById('quickBookTimeDisplay').textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+        
+        // Update availability info with duration validation
+        const availabilityInfo = document.getElementById('quickBookAvailabilityInfo');
+        if (duration < 30) {
+            availabilityInfo.textContent = 'Duration must be at least 30 minutes';
+            availabilityInfo.className = 'form-text text-danger';
+        } else if (duration > 120) {
+            availabilityInfo.textContent = 'Duration cannot exceed 2 hours';
+            availabilityInfo.className = 'form-text text-danger';
+        } else {
+            availabilityInfo.textContent = `Valid duration: ${duration} minutes`;
+            availabilityInfo.className = 'form-text text-success';
+        }
+    }
+}
+
+// Load all appointments for a specific doctor and date with full details
+function loadAllAppointments(doctorId, doctorName, date) {
+    const contentDiv = document.getElementById('viewAllAppointmentsContent');
+    const modalLabel = document.getElementById('viewAllAppointmentsModalLabel');
+    
+    // Update modal title
+    modalLabel.textContent = `All Appointments - Dr. ${doctorName} - ${new Date(date + 'T00:00:00').toLocaleDateString()}`;
+    
+    // Show loading
+    contentDiv.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading appointments...</p>
+        </div>
+    `;
+    
+    // Get appointments data from hidden element
+    const appointmentsDataElement = document.getElementById('appointmentsData');
+    let allAppointmentsData = {};
+    
+    if (appointmentsDataElement && appointmentsDataElement.textContent.trim()) {
+        try {
+            allAppointmentsData = JSON.parse(appointmentsDataElement.textContent);
+        } catch (e) {
+            console.error('Error parsing appointments data:', e);
+        }
+    }
+    
+    // Get appointments for this specific doctor
+    const appointments = allAppointmentsData[doctorId] || [];
+    
+    if (appointments.length === 0) {
+        contentDiv.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No Appointments</h5>
+                <p class="text-muted">No appointments found for this doctor on the selected date.</p>
+            </div>
+        `;
+    } else {
+        let appointmentsHTML = `
+            <div class="appointments-container">
+                <div class="mb-3">
+                    <small class="text-muted">Showing ${appointments.length} appointment(s) for this day</small>
+                </div>
+        `;
+        
+        appointments.forEach((appt, index) => {
+            // Calculate duration
+            const startParts = appt.start_time.split(':');
+            const endParts = appt.end_time.split(':');
+            const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+            const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+            const duration = endMinutes - startMinutes;
+            
+            appointmentsHTML += `
+                <div class="card appointment-card mb-3 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="card-title mb-3 text-primary">
+                                    <i class="fas fa-clock me-2"></i>
+                                    ${appt.start_time} - ${appt.end_time} 
+                                    <span class="badge bg-info ms-2">${duration} mins</span>
+                                </h6>
+                                
+                                <div class="patient-info mb-2">
+                                    <strong><i class="fas fa-user me-2 text-success"></i>Patient:</strong>
+                                    <span class="ms-2">${appt.patient_name}</span>
+                                </div>
+                                
+                                <div class="contact-info mb-3">
+                                    <strong><i class="fas fa-phone me-2 text-info"></i>Phone:</strong>
+                                    <span class="ms-2">${appt.patient_phone}</span>
+                                </div>
+                                
+                                ${appt.diagnosis && appt.diagnosis !== 'No diagnosis notes' ? `
+                                <div class="diagnosis-info">
+                                    <strong><i class="fas fa-file-medical me-2 text-danger"></i>Diagnosis Notes:</strong>
+                                    <div class="ms-4 mt-1 p-2 bg-light rounded">
+                                        <small class="text-muted">${appt.diagnosis}</small>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="appointment-meta text-end">
+                                    <div class="mb-2">
+                                        <span class="badge ${appt.status === 'Today' ? 'bg-warning text-dark' : appt.status === 'Upcoming' ? 'bg-success' : 'bg-secondary'}">
+                                            ${appt.status}
+                                        </span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <i class="fas fa-calendar-plus me-1"></i>
+                                        Created: ${appt.date_created}
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        <i class="fas fa-id-badge me-1"></i>
+                                        ID: ${appt.id}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        appointmentsHTML += `</div>`;
+        contentDiv.innerHTML = appointmentsHTML;
+    }
+}
+
+// Apply positioning to timeline slots and setup event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - setting up event listeners');
+    
+    // Position timeline slots
+    const timelineSlots = document.querySelectorAll('.timeline-slot');
+    timelineSlots.forEach(slot => {
+        const start = slot.getAttribute('data-start');
+        const width = slot.getAttribute('data-width');
+        if (start && width) {
+            slot.style.left = start + '%';
+            slot.style.width = width + '%';
+        }
+    });
+
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Add click event listeners for timeline slots
+    document.querySelectorAll('.available-slot.timeline-slot').forEach(slot => {
+        slot.addEventListener('click', function() {
+            console.log('Timeline slot clicked');
+            const date = this.getAttribute('data-date');
+            const doctorId = this.getAttribute('data-doctor-id');
+            const startTime = this.getAttribute('data-start-time');
+            const endTime = this.getAttribute('data-end-time');
+            const doctorName = this.getAttribute('data-doctor-name');
+            
+            quickBook(date, doctorId, startTime, endTime, doctorName);
+        });
+    });
+
+    // Add click event listeners for slot items
+    document.querySelectorAll('.slot-item').forEach(slot => {
+        slot.addEventListener('click', function() {
+            console.log('Slot item clicked');
+            const date = this.getAttribute('data-date');
+            const doctorId = this.getAttribute('data-doctor-id');
+            const startTime = this.getAttribute('data-start-time');
+            const endTime = this.getAttribute('data-end-time');
+            const doctorName = this.getAttribute('data-doctor-name');
+            
+            quickBook(date, doctorId, startTime, endTime, doctorName);
+        });
+    });
+
+    // Add click event listeners for the main Book Appointment buttons
+    document.querySelectorAll('.quick-book-all-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            console.log('Quick book button clicked');
+            const date = this.getAttribute('data-date');
+            const doctorId = this.getAttribute('data-doctor-id');
+            const doctorName = this.getAttribute('data-doctor-name');
+            
+            // Open modal without pre-selecting a specific time
+            quickBook(date, doctorId, '', '', doctorName);
+        });
+    });
+
+    // Add click event listeners for View All Appointments buttons
+    document.querySelectorAll('.view-all-appointments-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            console.log('View all appointments clicked');
+            const doctorId = this.getAttribute('data-doctor-id');
+            const doctorName = this.getAttribute('data-doctor-name');
+            const date = this.getAttribute('data-date');
+            
+            // Load and show all appointments in modal
+            loadAllAppointments(doctorId, doctorName, date);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('viewAllAppointmentsModal'));
+            modal.show();
+        });
+    });
+
+    // Add event listeners for time selection in the modal
+    document.getElementById('quickBookStartTime').addEventListener('change', function() {
+        updateEndTimeOptions();
+    });
+    
+    document.getElementById('quickBookEndTime').addEventListener('change', function() {
+        updateTimeDisplay();
+    });
+
+    // Form validation
+    document.getElementById('quickBookForm').addEventListener('submit', function(e) {
+        const patientSelect = document.getElementById('quickBookPatientSelect');
+        const startTime = document.getElementById('quickBookStartTime').value;
+        const endTime = document.getElementById('quickBookEndTime').value;
+        
+        if (!patientSelect.value) {
+            e.preventDefault();
+            alert('Please select a patient for the appointment.');
+            patientSelect.focus();
+            return false;
+        }
+        
+        if (!startTime || !endTime) {
+            e.preventDefault();
+            alert('Please select both start and end times.');
+            return false;
+        }
+        
+        if (endTime <= startTime) {
+            e.preventDefault();
+            alert('End time must be after start time.');
+            return false;
+        }
+        
+        // Validate duration (30 minutes to 2 hours)
+        function timeToMinutes(timeStr) {
+            const parts = timeStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+        
+        const startMinutes = timeToMinutes(startTime);
+        const endMinutes = timeToMinutes(endTime);
+        const duration = endMinutes - startMinutes;
+        
+        if (duration < 30) {
+            e.preventDefault();
+            alert('Appointment duration must be at least 30 minutes.');
+            return false;
+        }
+        
+        if (duration > 120) {
+            e.preventDefault();
+            alert('Appointment duration cannot exceed 2 hours.');
+            return false;
+        }
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Booking...';
+        submitBtn.disabled = true;
+    });
+});
+
+// Auto-refresh page every 5 minutes to show updated availability
+setTimeout(function() {
+    window.location.reload();
+}, 300000); // 5 minutes
+</script>
+
+{% endblock %}
