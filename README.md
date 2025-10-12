@@ -50,4 +50,12 @@ A fully functional hospital management app designed to complete a Database progr
 4. Create doctor availability system
 
 **To Run the app**
-clone this repository into your machine using
+clone this repository into your machine using this link: **https://github.com/Namwenyo/hospital_management.git**
+
+ or download the zip file and extract it into your machine.
+
+ Then run **pip install -r requirements.txt** to install necessary requirements and prepare/create the environment.
+
+ then run **py app.py**
+
+ the app will be ready.
