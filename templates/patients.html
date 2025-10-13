@@ -11,17 +11,73 @@
         </button>
     </div>
 
-    <!-- Search Form -->
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center bg-primary text-white shadow-sm">
+                <div class="card-body py-3">
+                    <h4 class="mb-0">{{ patients|length }}</h4>
+                    <small>Total Patients</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center bg-success text-white shadow-sm">
+                <div class="card-body py-3">
+                    <h4 class="mb-0">{{ patients|selectattr('appointments')|list|length }}</h4>
+                    <small>With Appointments</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center bg-info text-white shadow-sm">
+                <div class="card-body py-3">
+                    <h4 class="mb-0">{{ patients|selectattr('prescriptions')|list|length }}</h4>
+                    <small>With Prescriptions</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Search & Filter Form -->
     <div class="card mb-4 shadow-sm">
+        <div class="card-header py-3" style="background: linear-gradient(135deg, #3498db, #2c3e50); color: white;">
+            <h5 class="mb-0"><i class="fas fa-search me-2"></i>Search & Filter Patients</h5>
+        </div>
         <div class="card-body">
             <form method="GET" action="{{ url_for('patients') }}" class="row g-3">
-                <div class="col-md-8">
-                    <input type="text" class="form-control" name="search" placeholder="Search patients by name..." value="{{ search_query }}">
-                </div>
                 <div class="col-md-4">
-                    <button type="submit" class="btn btn-outline-primary w-100">
+                    <input type="text" class="form-control" name="search" placeholder="Search by name..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="gender" class="form-select">
+                        <option value="">All Genders</option>
+                        <option value="Male" {% if request.args.get('gender') == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if request.args.get('gender') == 'Female' %}selected{% endif %}>Female</option>
+                        <option value="Other" {% if request.args.get('gender') == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="has_appointments" class="form-select">
+                        <option value="">All Patients</option>
+                        <option value="yes" {% if request.args.get('has_appointments') == 'yes' %}selected{% endif %}>With Appointments</option>
+                        <option value="no" {% if request.args.get('has_appointments') == 'no' %}selected{% endif %}>Without Appointments</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-search me-1"></i>Search
                     </button>
+                </div>
+                <div class="col-12">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('patients') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </a>
+                        <button type="button" class="btn btn-outline-info btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#exportModal">
+                            <i class="fas fa-download me-1"></i>Export Patients
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -42,25 +98,88 @@
                             <th>Age</th>
                             <th>Gender</th>
                             <th>Phone</th>
+                            <th>Appointments</th>
+                            <th>Prescriptions</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in patients %}
                         <tr>
-                            <td>{{ p.first_name }} {{ p.surname }}</td>
-                            <td>{{ p.age }} years</td>
-                            <td>{{ p.gender }}</td>
-                            <td>{{ p.phone if p.phone else 'N/A' }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewPatientModal{{ p.id }}">
-                                    <i class="fas fa-eye me-1"></i>View Details
-                                </button>
+                                <strong>{{ p.first_name }} {{ p.surname }}</strong>
+                            </td>
+                            <td>{{ p.age }} years</td>
+                            <td>
+                                <span class="badge {% if p.gender == 'Male' %}bg-primary{% elif p.gender == 'Female' %}bg-pink{% else %}bg-secondary{% endif %}">
+                                    {{ p.gender }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if p.phone %}
+                                <i class="fas fa-phone text-success me-1"></i>{{ p.phone }}
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.appointments %}
+                                <span class="badge bg-success rounded-pill">{{ p.appointments|length }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary rounded-pill">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.prescriptions %}
+                                <span class="badge bg-warning text-dark rounded-pill">{{ p.prescriptions|length }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary rounded-pill">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewPatientModal{{ p.id }}" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editPatientModal{{ p.id }}" title="Edit Patient">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" title="Quick Actions">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="{{ url_for('appointments') }}?patient_id={{ p.id }}">
+                                                    <i class="fas fa-calendar-plus me-2"></i>Book Appointment
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{{ url_for('prescriptions') }}?patient_id={{ p.id }}">
+                                                    <i class="fas fa-prescription me-2"></i>Add Prescription
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#detailedPatientModal{{ p.id }}">
+                                                    <i class="fas fa-user-chart me-2"></i>Full Profile
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="text-center py-4">No patients found.</td>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="fas fa-user-slash fa-2x text-muted mb-3"></i>
+                                <h5 class="text-muted">No patients found</h5>
+                                <p class="text-muted">Try adjusting your search criteria or add a new patient.</p>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+                                    <i class="fas fa-plus me-1"></i>Add First Patient
+                                </button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -69,20 +188,24 @@
             
             <!-- Pagination -->
             {% if total_pages > 1 %}
-            <nav class="d-flex justify-content-center mt-4">
+            <nav class="d-flex justify-content-center mt-4 pb-3">
                 <ul class="pagination">
                     <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('patients', page=page-1, search=search_query) }}">Previous</a>
+                        <a class="page-link" href="{{ url_for('patients', page=page-1, search=search_query, gender=request.args.get('gender'), has_appointments=request.args.get('has_appointments')) }}">
+                            <i class="fas fa-chevron-left me-1"></i>Previous
+                        </a>
                     </li>
                     
                     {% for p_num in range(1, total_pages + 1) %}
                     <li class="page-item {% if p_num == page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for('patients', page=p_num, search=search_query) }}">{{ p_num }}</a>
+                        <a class="page-link" href="{{ url_for('patients', page=p_num, search=search_query, gender=request.args.get('gender'), has_appointments=request.args.get('has_appointments')) }}">{{ p_num }}</a>
                     </li>
                     {% endfor %}
                     
                     <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('patients', page=page+1, search=search_query) }}">Next</a>
+                        <a class="page-link" href="{{ url_for('patients', page=page+1, search=search_query, gender=request.args.get('gender'), has_appointments=request.args.get('has_appointments')) }}">
+                            Next<i class="fas fa-chevron-right ms-1"></i>
+                        </a>
                     </li>
                 </ul>
             </nav>
@@ -91,26 +214,32 @@
     </div>
 </div>
 
+<!-- Add Patient Modal -->
 <div class="modal fade" id="addPatientModal" tabindex="-1" aria-labelledby="addPatientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addPatientModalLabel">Register New Patient</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #27ae60, #219a52); color: white;">
+                <h5 class="modal-title" id="addPatientModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Register New Patient
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('add_patient') }}">
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label class="form-label">First Name *</label>
                         <input type="text" class="form-control" name="first_name" placeholder="First Name" required>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Surname *</label>
                         <input type="text" class="form-control" name="surname" placeholder="Surname" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Date of Birth</label>
+                        <label class="form-label">Date of Birth *</label>
                         <input type="date" class="form-control" name="date_of_birth" required max="{{ date_today }}">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Gender *</label>
                         <select name="gender" class="form-select" required>
                             <option value="" disabled selected>Select Gender</option>
                             <option value="Male">Male</option>
@@ -119,12 +248,14 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Phone Number</label>
                         <input type="tel" class="form-control" name="phone" placeholder="Phone Number">
+                        <div class="form-text">Optional, but recommended for appointment reminders</div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-success">
                         <i class="fas fa-user-plus me-1"></i>Register Patient
                     </button>
                 </div>
@@ -133,7 +264,33 @@
     </div>
 </div>
 
-<!-- View Patient Modals (one for each patient) - ENHANCED STYLING -->
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-download me-2"></i>Export Patients</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Export patient data in the following formats:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-file-csv me-2"></i>Export as CSV
+                    </button>
+                    <button class="btn btn-outline-danger">
+                        <i class="fas fa-file-pdf me-2"></i>Export as PDF
+                    </button>
+                    <button class="btn btn-outline-success">
+                        <i class="fas fa-file-excel me-2"></i>Export as Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Patient Modals -->
 {% for p in patients %}
 <div class="modal fade" id="viewPatientModal{{ p.id }}" tabindex="-1" aria-labelledby="viewPatientModalLabel{{ p.id }}" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -150,12 +307,11 @@
             <div class="modal-body" style="background-color: #f8f9fa;">
                 <!-- Patient Summary Card -->
                 <div class="card mb-4 shadow-sm border-0" style="border-radius: 10px;">
-                    <!-- <div class="card-body text-center p-4">
+                    <div class="card-body text-center p-4">
                         <div class="avatar-placeholder mb-3" style="width: 80px; height: 80px; background: linear-gradient(135deg, #3498db, #2c3e50); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
                             <i class="fas fa-user fa-2x text-white"></i>
                         </div>
                         <h4 class="card-title mb-1" style="color: #2c3e50;">{{ p.first_name }} {{ p.surname }}</h4>
-                        <p class="text-muted mb-3">Patient ID: #{{ p.id }}</p>
                         <div class="d-flex justify-content-center gap-3">
                             <span class="badge bg-primary rounded-pill px-3 py-2">
                                 <i class="fas fa-venus-mars me-1"></i>{{ p.gender }}
@@ -164,11 +320,11 @@
                                 <i class="fas fa-birthday-cake me-1"></i>{{ p.age }} years
                             </span>
                         </div>
-                    </div> -->
+                    </div>
                 </div>
 
                 <!-- Details Card -->
-                <div class="card shadow-sm border-0" style="border-radius: 10px;">
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 10px;">
                     <div class="card-header bg-white" style="border-bottom: 1px solid #e9ecef;">
                         <h6 class="mb-0" style="color: #2c3e50;">
                             <i class="fas fa-info-circle me-2 text-primary"></i>Personal Information
@@ -216,21 +372,46 @@
                                 </div>
                             </div>
                         </div>
-                        
+                    </div>
+                </div>
+
+                <!-- Medical Records Card -->
+                <div class="card shadow-sm border-0" style="border-radius: 10px;">
+                    <div class="card-header bg-white" style="border-bottom: 1px solid #e9ecef;">
+                        <h6 class="mb-0" style="color: #2c3e50;">
+                            <i class="fas fa-file-medical me-2 text-danger"></i>Medical Records
+                        </h6>
+                    </div>
+                    <div class="card-body">
                         <!-- Appointments Section -->
-                        <div class="appointment-section mt-4 pt-3 border-top">
-                            <div class="detail-item">
-                                <div class="detail-label text-muted small">Appointment History</div>
-                                <div class="detail-value">
-                                    {% if p.appointments %}
-                                        <span class="badge bg-success rounded-pill">
-                                            {{ p.appointments|length }} appointment(s)
-                                        </span>
-                                        <small class="text-muted d-block mt-1">Cannot delete patients with appointment history</small>
-                                    {% else %}
-                                        <span class="badge bg-secondary rounded-pill">No appointments</span>
-                                    {% endif %}
-                                </div>
+                        <div class="detail-item mb-3">
+                            <div class="detail-label text-muted small">Appointment History</div>
+                            <div class="detail-value">
+                                {% if p.appointments %}
+                                    <span class="badge bg-success rounded-pill">
+                                        {{ p.appointments|length }} appointment(s)
+                                    </span>
+                                    <small class="text-muted d-block mt-1">Cannot delete patients with appointment history</small>
+                                {% else %}
+                                    <span class="badge bg-secondary rounded-pill">No appointments</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Prescriptions Section -->
+                        <div class="detail-item">
+                            <div class="detail-label text-muted small">Active Prescriptions</div>
+                            <div class="detail-value">
+                                {% if p.prescriptions %}
+                                    <span class="badge bg-warning text-dark rounded-pill">
+                                        {{ p.prescriptions|length }} prescription(s)
+                                    </span>
+                                    <button class="btn btn-sm btn-outline-info ms-2 view-prescriptions-btn" data-patient-id="{{ p.id }}">
+                                        View All
+                                    </button>
+                                {% else %}
+                                    <span class="badge bg-secondary rounded-pill">No prescriptions</span>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -260,31 +441,135 @@
 </div>
 {% endfor %}
 
-<!-- Edit Patient Modals (one for each patient) -->
+<!-- Detailed Patient Profile Modals -->
+{% for p in patients %}
+<div class="modal fade" id="detailedPatientModal{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2c3e50); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-chart me-2"></i>Complete Patient Profile - {{ p.first_name }} {{ p.surname }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Personal Info Column -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fas fa-user me-2"></i>Personal Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-3">
+                                    <div class="avatar-placeholder mb-3" style="width: 60px; height: 60px; background: linear-gradient(135deg, #3498db, #2c3e50); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-user text-white"></i>
+                                    </div>
+                                    <h5>{{ p.first_name }} {{ p.surname }}</h5>
+                                </div>
+                                <div class="patient-info">
+                                    <p><strong>Age:</strong> {{ p.age }} years</p>
+                                    <p><strong>Gender:</strong> {{ p.gender }}</p>
+                                    <p><strong>Phone:</strong> {{ p.phone if p.phone else 'Not provided' }}</p>
+                                    <p><strong>Registered:</strong> {{ p.date_created.strftime('%Y-%m-%d') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Medical History Column -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0"><i class="fas fa-file-medical me-2"></i>Medical History</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="medical-stats">
+                                    <div class="stat-item mb-3">
+                                        <strong>Appointments:</strong>
+                                        <span class="badge bg-success float-end">{{ p.appointments|length }}</span>
+                                    </div>
+                                    <div class="stat-item mb-3">
+                                        <strong>Prescriptions:</strong>
+                                        <span class="badge bg-warning text-dark float-end">{{ p.prescriptions|length }}</span>
+                                    </div>
+                                </div>
+                                <hr>
+                                <h6>Recent Activity</h6>
+                                <div class="activity-list">
+                                    {% if p.appointments %}
+                                        {% for appointment in p.appointments[:3] %}
+                                        <div class="activity-item small text-muted mb-2">
+                                            <i class="fas fa-calendar-check me-1 text-success"></i>
+                                            {{ appointment.date.strftime('%b %d') }} - {{ appointment.doctor.name }}
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-muted small">No recent activity</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions Column -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <a href="{{ url_for('appointments') }}?patient_id={{ p.id }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-calendar-plus me-2"></i>Book Appointment
+                                    </a>
+                                    <a href="{{ url_for('prescriptions') }}?patient_id={{ p.id }}" class="btn btn-outline-warning btn-sm">
+                                        <i class="fas fa-prescription me-2"></i>Add Prescription
+                                    </a>
+                                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editPatientModal{{ p.id }}" data-bs-dismiss="modal">
+                                        <i class="fas fa-edit me-2"></i>Edit Profile
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#viewPatientModal{{ p.id }}" data-bs-dismiss="modal">
+                                        <i class="fas fa-file-medical me-2"></i>View Medical Records
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Edit Patient Modals -->
 {% for p in patients %}
 <div class="modal fade" id="editPatientModal{{ p.id }}" tabindex="-1" aria-labelledby="editPatientModalLabel{{ p.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editPatientModalLabel{{ p.id }}">Edit Patient</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white;">
+                <h5 class="modal-title" id="editPatientModalLabel{{ p.id }}">
+                    <i class="fas fa-edit me-2"></i>Edit Patient
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('edit_patient', patient_id=p.id) }}">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">First Name</label>
+                        <label class="form-label">First Name *</label>
                         <input type="text" class="form-control" name="first_name" value="{{ p.first_name }}" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Surname</label>
+                        <label class="form-label">Surname *</label>
                         <input type="text" class="form-control" name="surname" value="{{ p.surname }}" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Date of Birth</label>
+                        <label class="form-label">Date of Birth *</label>
                         <input type="date" class="form-control" name="date_of_birth" value="{{ p.date_of_birth.strftime('%Y-%m-%d') }}" required max="{{ date_today }}">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Gender</label>
+                        <label class="form-label">Gender *</label>
                         <select name="gender" class="form-select" required>
                             <option value="Male" {% if p.gender == 'Male' %}selected{% endif %}>Male</option>
                             <option value="Female" {% if p.gender == 'Female' %}selected{% endif %}>Female</option>
@@ -298,7 +583,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-warning">
                         <i class="fas fa-save me-1"></i>Save Changes
                     </button>
                 </div>
@@ -361,10 +646,8 @@ body {
     font-weight: 500;
 }
 
-.appointment-section {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    padding: 15px;
+.bg-pink {
+    background-color: #e83e8c !important;
 }
 
 /* Custom modal styling */
@@ -395,11 +678,20 @@ body {
 .table-hover tbody tr:hover {
     background-color: rgba(52, 152, 219, 0.05);
 }
+
+.stat-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.activity-item {
+    padding: 4px 0;
+}
 </style>
 
 <script>
-// Set today's date as the max for date of birth input
 document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date as the max for date of birth input
     const today = new Date();
     const yyyy = today.getFullYear();
     let mm = today.getMonth() + 1;
@@ -409,12 +701,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dd < 10) dd = '0' + dd;
     
     const maxDate = `${yyyy}-${mm}-${dd}`;
-    document.querySelector('input[name="date_of_birth"]').max = maxDate;
+    const dobInputs = document.querySelectorAll('input[name="date_of_birth"]');
+    dobInputs.forEach(input => {
+        input.max = maxDate;
+    });
     
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+
+    // Auto-focus search input
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput && !searchInput.value) {
+        searchInput.focus();
+    }
+
+    // Handle view prescriptions buttons
+    document.querySelectorAll('.view-prescriptions-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const patientId = this.getAttribute('data-patient-id');
+            window.location.href = `{{ url_for("prescriptions") }}?patient_id=${patientId}`;
+        });
     });
 });
 </script>

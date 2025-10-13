@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;"> 
+            <i class="fas fa-file-medical me-2" style="color: #9b59b6;"></i>Medical Records Management
+        </h2>
+        <button class="btn btn-primary" id="toggleUploadForm">
+            <i class="fas fa-upload me-1"></i>Upload Medical Record
+        </button>
+    </div>
+
+    <!-- Search and Filter Form -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('medical_records') }}" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="search" placeholder="Search by patient name or record type..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="patient_filter" class="form-select">
+                        <option value="">All Patients</option>
+                        {% for patient in all_patients %}
+                        <option value="{{ patient.id }}" {% if patient_filter == patient.id|string %}selected{% endif %}>
+                            {{ patient.first_name }} {{ patient.surname }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="record_type" class="form-select">
+                        <option value="">All Record Types</option>
+                        <option value="Lab Report" {% if record_type_filter == 'Lab Report' %}selected{% endif %}>Lab Report</option>
+                        <option value="X-Ray" {% if record_type_filter == 'X-Ray' %}selected{% endif %}>X-Ray</option>
+                        <option value="MRI" {% if record_type_filter == 'MRI' %}selected{% endif %}>MRI</option>
+                        <option value="CT Scan" {% if record_type_filter == 'CT Scan' %}selected{% endif %}>CT Scan</option>
+                        <option value="Prescription" {% if record_type_filter == 'Prescription' %}selected{% endif %}>Prescription</option>
+                        <option value="Medical History" {% if record_type_filter == 'Medical History' %}selected{% endif %}>Medical History</option>
+                        <option value="Consultation Notes" {% if record_type_filter == 'Consultation Notes' %}selected{% endif %}>Consultation Notes</option>
+                        <option value="Discharge Summary" {% if record_type_filter == 'Discharge Summary' %}selected{% endif %}>Discharge Summary</option>
+                        <option value="Other" {% if record_type_filter == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-search me-1"></i>Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Upload Form (Initially Hidden) -->
+    <div class="card mb-4 shadow-sm" id="uploadForm" style="display: none;">
+        <div class="card-header py-3" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;"> 
+            <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Upload Medical Record</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('medical_records') }}" enctype="multipart/form-data" id="medicalRecordForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Patient</label>
+                        <select name="patient_id" class="form-select" required>
+                            <option value="" disabled selected>Select Patient</option>
+                            {% for patient in all_patients %}
+                            <option value="{{ patient.id }}">{{ patient.first_name }} {{ patient.surname }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Doctor</label>
+                        <select name="doctor_id" class="form-select" required>
+                            <option value="" disabled selected>Select Doctor</option>
+                            {% for doctor in all_doctors %}
+                            <option value="{{ doctor.id }}">{{ doctor.name }} - {{ doctor.specialization }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Record Type</label>
+                        <select name="record_type" class="form-select" required>
+                            <option value="" disabled selected>Select Record Type</option>
+                            <option value="Lab Report">Lab Report</option>
+                            <option value="X-Ray">X-Ray</option>
+                            <option value="MRI">MRI</option>
+                            <option value="CT Scan">CT Scan</option>
+                            <option value="Prescription">Prescription</option>
+                            <option value="Medical History">Medical History</option>
+                            <option value="Consultation Notes">Consultation Notes</option>
+                            <option value="Discharge Summary">Discharge Summary</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">File</label>
+                        <input type="file" name="medical_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.txt" required>
+                        <div class="form-text">
+                            Allowed file types: PDF, JPG, JPEG, PNG, GIF, DOC, DOCX, TXT (Max: 10MB)
+                        </div>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" placeholder="Enter description of the medical record..." rows="3"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success me-2">
+                            <i class="fas fa-upload me-1"></i>Upload Record
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="cancelUpload">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Medical Records Table -->
+    <div class="card shadow-sm">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;"> 
+            <h5 class="mb-0"><i class="fas fa-file-medical me-2"></i>Medical Records</h5>
+            <span class="badge bg-light text-dark">{{ medical_records|length }} record(s)</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead style="background-color: #ecf0f1;">
+                        <tr>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Record Type</th>
+                            <th>File Name</th>
+                            <th>File Size</th>
+                            <th>Upload Date</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in medical_records %}
+                        <tr>
+                            <td>
+                                <strong>{{ record.patient.first_name }} {{ record.patient.surname }}</strong>
+                            </td>
+                            <td>Dr. {{ record.doctor.name }}</td>
+                            <td>
+                                <span class="badge bg-info text-dark">{{ record.record_type }}</span>
+                            </td>
+                            <td>
+                                <i class="fas {{ 'fa-file-pdf text-danger' if record.is_pdf() else 'fa-image text-success' if record.is_image() else 'fa-file text-primary' }} me-2"></i>
+                                {{ record.file_name }}
+                            </td>
+                            <td>
+                                {% if record.file_size %}
+                                    {{ "%.1f"|format(record.file_size / 1024 / 1024) }} MB
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ record.upload_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% if record.description %}
+                                {{ record.description|truncate(30) }}
+                                {% else %}
+                                <span class="text-muted">No description</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if record.can_preview() %}
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewRecordModal{{ record.id }}">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </button>
+                                    {% else %}
+                                    <a href="{{ url_for('download_medical_record', record_id=record.id) }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-download me-1"></i>Download
+                                    </a>
+                                    {% endif %}
+                                    <a href="{{ url_for('download_medical_record', record_id=record.id) }}" class="btn btn-outline-success" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <a href="{{ url_for('delete_medical_record', record_id=record.id) }}" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to delete this medical record?')">
+                                        <i class="fas fa-trash me-1"></i>Delete
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="fas fa-file-medical fa-3x text-muted mb-3"></i>
+                                <p class="text-muted mb-0">No medical records found.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav class="d-flex justify-content-center mt-4">
+                <ul class="pagination">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('medical_records', page=page-1, search=search_query, patient_filter=patient_filter, record_type=record_type_filter) }}">Previous</a>
+                    </li>
+                    {% for p_num in range(1, total_pages + 1) %}
+                    <li class="page-item {% if p_num == page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('medical_records', page=p_num, search=search_query, patient_filter=patient_filter, record_type=record_type_filter) }}">{{ p_num }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('medical_records', page=page+1, search=search_query, patient_filter=patient_filter, record_type=record_type_filter) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- View Record Modals -->
+{% for record in medical_records %}
+{% if record.can_preview() %}
+<div class="modal fade" id="viewRecordModal{{ record.id }}" tabindex="-1" aria-labelledby="viewRecordModalLabel{{ record.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #9b59b6; color: white;">
+                <h5 class="modal-title" id="viewRecordModalLabel{{ record.id }}">
+                    <i class="fas fa-file-medical me-2"></i>{{ record.record_type }} - {{ record.patient.first_name }} {{ record.patient.surname }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Record Details</h6>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Patient:</strong> {{ record.patient.first_name }} {{ record.patient.surname }}</p>
+                                <p><strong>Doctor:</strong> Dr. {{ record.doctor.name }}</p>
+                                <p><strong>Type:</strong> {{ record.record_type }}</p>
+                                <p><strong>Uploaded:</strong> {{ record.upload_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                                {% if record.description %}
+                                <p><strong>Description:</strong> {{ record.description }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">File Preview</h6>
+                                <a href="{{ url_for('download_medical_record', record_id=record.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-download me-1"></i>Download
+                                </a>
+                            </div>
+                            <div class="card-body" style="height: 600px; overflow: auto;">
+                                {% if record.is_pdf() %}
+                                <iframe src="{{ url_for('download_medical_record', record_id=record.id) }}#view=fitH" width="100%" height="100%" style="border: none;"></iframe>
+                                {% elif record.is_image() %}
+                                <img src="{{ url_for('download_medical_record', record_id=record.id) }}" alt="{{ record.file_name }}" style="max-width: 100%; height: auto;" class="img-fluid">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadForm');
+    const toggleButton = document.getElementById('toggleUploadForm');
+    const cancelButton = document.getElementById('cancelUpload');
+    const fileInput = document.querySelector('input[name="medical_file"]');
+
+    // Toggle form visibility
+    toggleButton.addEventListener('click', function() {
+        if (uploadForm.style.display === 'none') {
+            uploadForm.style.display = 'block';
+            toggleButton.innerHTML = '<i class="fas fa-eye me-1"></i>View Records';
+            toggleButton.classList.remove('btn-primary');
+            toggleButton.classList.add('btn-secondary');
+        } else {
+            uploadForm.style.display = 'none';
+            toggleButton.innerHTML = '<i class="fas fa-upload me-1"></i>Upload Medical Record';
+            toggleButton.classList.remove('btn-secondary');
+            toggleButton.classList.add('btn-primary');
+        }
+    });
+
+    // Cancel button handler
+    cancelButton.addEventListener('click', function() {
+        uploadForm.style.display = 'none';
+        toggleButton.innerHTML = '<i class="fas fa-upload me-1"></i>Upload Medical Record';
+        toggleButton.classList.remove('btn-secondary');
+        toggleButton.classList.add('btn-primary');
+    });
+
+    // File size validation
+    const medicalRecordForm = document.getElementById('medicalRecordForm');
+    if (medicalRecordForm) {
+        medicalRecordForm.addEventListener('submit', function(e) {
+            const file = fileInput.files[0];
+            const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+            
+            if (file && file.size > maxSize) {
+                e.preventDefault();
+                alert('File size must be less than 10MB.');
+                return false;
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.card {
+    border-radius: 10px;
+    border: none;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.modal iframe, .modal img {
+    border-radius: 8px;
+}
+</style>
+
+{% endblock %}

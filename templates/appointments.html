@@ -77,7 +77,7 @@
                             This time slot conflicts with an existing appointment
                         </div>
                         <div class="form-text" id="availabilityInfo">
-                            Select a doctor and date to see available times
+                            Select a doctor, patient and date to see available times
                         </div>
                     </div>
                     <div class="col-12 mb-3">
@@ -386,6 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const startTimeSelect = document.getElementById('startTime');
     const endTimeSelect = document.getElementById('endTime');
     const doctorSelect = document.getElementById('doctorSelect');
+    const patientSelect = document.getElementById('patientSelect');
     const dateError = document.getElementById('dateError');
     const timeError = document.getElementById('timeError');
     const availabilityInfo = document.getElementById('availabilityInfo');
@@ -399,6 +400,17 @@ document.addEventListener('DOMContentLoaded', function() {
             bookedSlots = JSON.parse(bookedSlotsElement.textContent);
         } catch (e) {
             console.error('Error parsing booked slots:', e);
+        }
+    }
+
+    // Convert Python patient_booked_slots to JavaScript object
+    var patientBookedSlots = {};
+    var patientBookedSlotsElement = document.getElementById('patientBookedSlotsData');
+    if (patientBookedSlotsElement) {
+        try {
+            patientBookedSlots = JSON.parse(patientBookedSlotsElement.textContent);
+        } catch (e) {
+            console.error('Error parsing patient booked slots:', e);
         }
     }
 
@@ -445,8 +457,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return slots;
     }
 
-    // Check if a time slot is available
-    function isTimeSlotAvailable(doctorId, dateString, startTime, endTime) {
+    // Check if a time slot is available for doctor
+    function isDoctorTimeSlotAvailable(doctorId, dateString, startTime, endTime) {
         var key = doctorId + '_' + dateString;
         var bookedForThisSlot = bookedSlots[key] || [];
 
@@ -473,17 +485,57 @@ document.addEventListener('DOMContentLoaded', function() {
         return true; // No conflicts
     }
 
-    // Update time slots based on selected doctor and date
+    // Check if patient has any appointments at this time
+    function isPatientTimeSlotAvailable(patientId, dateString, startTime, endTime) {
+        var key = patientId + '_' + dateString;
+        var bookedForThisSlot = patientBookedSlots[key] || [];
+
+        // If patient has no appointments on this date, all slots are available
+        if (bookedForThisSlot.length === 0) {
+            return true;
+        }
+
+        // Convert start and end times to minutes for easier comparison
+        function timeToMinutes(timeStr) {
+            var parts = timeStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+
+        var startMinutes = timeToMinutes(startTime);
+        var endMinutes = timeToMinutes(endTime);
+
+        // Check for conflicts with existing appointments
+        for (var i = 0; i < bookedForThisSlot.length; i++) {
+            var bookedStart = timeToMinutes(bookedForThisSlot[i].start);
+            var bookedEnd = timeToMinutes(bookedForThisSlot[i].end);
+
+            // Check for overlap
+            if ((startMinutes < bookedEnd) && (endMinutes > bookedStart)) {
+                return false; // Conflict found
+            }
+        }
+
+        return true; // No conflicts
+    }
+
+    // Get patient's booked times for the selected date
+    function getPatientBookedTimes(patientId, dateString) {
+        var key = patientId + '_' + dateString;
+        return patientBookedSlots[key] || [];
+    }
+
+    // Update time slots based on selected doctor, patient and date
     function updateTimeSlots() {
         var doctorId = doctorSelect.value;
+        var patientId = patientSelect.value;
         var dateValue = dateInput.value;
 
         startTimeSelect.innerHTML = '<option value="" disabled selected>Start Time</option>';
         endTimeSelect.innerHTML = '<option value="" disabled selected>End Time</option>';
         timeError.style.display = 'none';
 
-        if (!doctorId || !dateValue) {
-            availabilityInfo.textContent = 'Select a doctor and date to see available times';
+        if (!doctorId || !patientId || !dateValue) {
+            availabilityInfo.textContent = 'Select a doctor, patient and date to see available times';
             availabilityInfo.className = 'form-text';
             return;
         }
@@ -491,12 +543,18 @@ document.addEventListener('DOMContentLoaded', function() {
         var allSlots = generateTimeSlots();
         var availableSlots = [];
         
-        // Find available start times
+        // Get patient's existing appointments for this date
+        var patientBookedTimes = getPatientBookedTimes(patientId, dateValue);
+        
+        // Find available start times (check both doctor and patient availability)
         for (var i = 0; i < allSlots.length - 1; i++) {
             var startTime = allSlots[i];
             var endTime = allSlots[i + 1];
 
-            if (isTimeSlotAvailable(doctorId, dateValue, startTime, endTime)) {
+            var doctorAvailable = isDoctorTimeSlotAvailable(doctorId, dateValue, startTime, endTime);
+            var patientAvailable = isPatientTimeSlotAvailable(patientId, dateValue, startTime, endTime);
+
+            if (doctorAvailable && patientAvailable) {
                 availableSlots.push(startTime);
                 var option = document.createElement('option');
                 option.value = startTime;
@@ -506,11 +564,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (availableSlots.length == 0) {
-            availabilityInfo.textContent = 'No available time slots for this doctor on the selected date';
-            availabilityInfo.className = 'form-text text-danger';
+            if (patientBookedTimes.length > 0) {
+                availabilityInfo.textContent = 'Patient has appointments throughout the day. No available time slots.';
+                availabilityInfo.className = 'form-text text-warning';
+            } else {
+                availabilityInfo.textContent = 'No available time slots for this doctor on the selected date';
+                availabilityInfo.className = 'form-text text-danger';
+            }
         } else {
-            availabilityInfo.textContent = availableSlots.length + ' available time slot(s)';
-            availabilityInfo.className = 'form-text text-success';
+            if (patientBookedTimes.length > 0) {
+                availabilityInfo.textContent = availableSlots.length + ' available time slot(s) - showing only times patient is free';
+                availabilityInfo.className = 'form-text text-success';
+            } else {
+                availabilityInfo.textContent = availableSlots.length + ' available time slot(s)';
+                availabilityInfo.className = 'form-text text-success';
+            }
         }
     }
 
@@ -591,8 +659,9 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleButton.classList.add('btn-primary');
     });
 
-    // Event listeners for doctor and date changes
+    // Event listeners for doctor, patient and date changes
     doctorSelect.addEventListener('change', updateTimeSlots);
+    patientSelect.addEventListener('change', updateTimeSlots);
     dateInput.addEventListener('change', updateTimeSlots);
     startTimeSelect.addEventListener('change', updateEndTimeOptions);
 
@@ -632,14 +701,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('End time must be after start time.');
                 return false;
             }
+
+            // Validate patient availability
+            var patientId = patientSelect.value;
+            var doctorId = doctorSelect.value;
+            var dateValue = dateInput.value;
+
+            if (!isPatientTimeSlotAvailable(patientId, dateValue, startTime, endTime)) {
+                e.preventDefault();
+                alert('This patient already has an appointment at the selected time. Please choose a different time.');
+                return false;
+            }
+
+            // Validate doctor availability
+            if (!isDoctorTimeSlotAvailable(doctorId, dateValue, startTime, endTime)) {
+                e.preventDefault();
+                alert('This time slot is no longer available for the selected doctor. Please choose a different time.');
+                return false;
+            }
         });
     }
+
+    // Initialize time slots if form is pre-filled
+    updateTimeSlots();
 });
 </script>
 
-<!-- Add this hidden element to pass data from Flask to JavaScript -->
+<!-- Add these hidden elements to pass data from Flask to JavaScript -->
 <script id="bookedSlotsData" type="application/json">
 {{ booked_slots|tojson }}
+</script>
+
+<script id="patientBookedSlotsData" type="application/json">
+{{ patient_booked_slots|tojson }}
 </script>
 
 <style>
