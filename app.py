@@ -659,9 +659,13 @@ def doctor_appointments():
         doctor_id=current_doctor.id
     ).order_by(Appointment.date.desc(), Appointment.start_time.desc()).all()
     
+    # Pass current datetime to template for status comparison
+    now = datetime.now()
+    
     return render_template('doctor_appointments.html', 
                          appointments=appointments, 
-                         current_doctor=current_doctor)
+                         current_doctor=current_doctor,
+                         now=now)  # Add this
 
 @app.route('/doctor/prescriptions')
 @login_required

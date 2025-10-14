@@ -41,7 +41,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <!-- FIXED: Use current date from Flask context or calculate in template -->
+                                        <!-- Using 'now' passed from Flask route -->
                                         {% set appointment_date = appointment.date %}
                                         {% if appointment_date < now.date() %}
                                             <span class="badge bg-secondary">Completed</span>
