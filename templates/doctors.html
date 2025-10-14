@@ -44,16 +44,32 @@
                     <!-- Specialization -->
                     <span class="badge mb-3" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 20px;">{{ d.specialization }}</span>
                     
-                    <!-- Appointment Count - FIXED BADGE -->
+                    <!-- Account Status Badge -->
+                    <div class="mb-2">
+                        {% if d.user_account %}
+                        <span class="badge bg-success" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 12px;">
+                            <i class="fas fa-check-circle me-1"></i>Account Active
+                        </span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 12px;">
+                            <i class="fas fa-exclamation-triangle me-1"></i>No Account
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Appointment Count -->
                     <div class="mb-3">
-                        <span class="badge {% if d.appointments %}bg-success{% else %}bg-secondary{% endif %}" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 15px;">
-                            {% if d.appointments %}Available{% else %}Not Available{% endif %}
+                        <span class="badge {% if d.appointments %}bg-info{% else %}bg-secondary{% endif %}" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 15px;">
+                            {{ d.appointments|length if d.appointments else 0 }} Appointments
                         </span>
                     </div>
                     
                     <!-- Quick Stats -->
                     <div class="small text-muted mb-3">
                         <div><i class="fas fa-calendar-plus me-1" style="color: #7f8c8d;"></i>Joined: {{ d.date_created.strftime('%b %d, %Y') if d.date_created else 'N/A' }}</div>
+                        {% if d.user_account %}
+                        <div><i class="fas fa-user me-1" style="color: #7f8c8d;"></i>Username: {{ d.user_account.username }}</div>
+                        {% endif %}
                     </div>
                     
                     <!-- Action Buttons -->
@@ -115,11 +131,27 @@
                         </datalist>
                         <div class="form-text">Type your own specialization or select from the suggestions</div>
                     </div>
+                    
+                    <!-- ADDED: Login Account Setup Section -->
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3">
+                        <i class="fas fa-user-shield me-2"></i>Login Account Setup
+                    </h6>
+                    <div class="mb-3">
+                        <label class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" name="username" class="form-control" placeholder="doctor_username" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
+                        <div class="form-text">This will be used for doctor login</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Initial Password <span class="text-danger">*</span></label>
+                        <input type="password" name="password" class="form-control" placeholder="Enter initial password" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
+                        <div class="form-text">Doctor can change this password after first login</div>
+                    </div>
                 </div>
                 <div class="modal-footer" style="border-top: 1px solid #e3f2fd;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
                     <button type="submit" class="btn btn-primary" style="background: #3498db; border: none; border-radius: 8px; font-weight: 600;">
-                        <i class="fas fa-user-md me-1"></i>Add Doctor
+                        <i class="fas fa-user-md me-1"></i>Add Doctor & Create Account
                     </button>
                 </div>
             </form>
@@ -176,6 +208,31 @@
                                     <div class="detail-value fw-medium" style="color: #2c3e50; font-size: 1.1rem;">
                                         <i class="fas fa-calendar-plus me-2" style="color: #3498db;"></i>
                                         {{ d.date_created.strftime('%B %d, %Y') if d.date_created else 'N/A' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- ADDED: Account Information Section -->
+                        <div class="row mt-3 pt-3" style="border-top: 1px solid #e9ecef;">
+                            <div class="col-12">
+                                <div class="detail-item">
+                                    <div class="detail-label text-muted small">Login Account Status</div>
+                                    <div class="detail-value">
+                                        {% if d.user_account %}
+                                            <span class="badge bg-success me-2">
+                                                <i class="fas fa-check-circle me-1"></i>Account Active
+                                            </span>
+                                            <span class="text-muted">
+                                                Username: <strong>{{ d.user_account.username }}</strong> | 
+                                                Created: {{ d.user_account.date_created.strftime('%b %d, %Y') if d.user_account.date_created else 'N/A' }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark me-2">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>No Login Account
+                                            </span>
+                                            <small class="text-muted">Create account in Edit Doctor section</small>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -373,6 +430,44 @@
                         </datalist>
                         <div class="form-text">Type your own specialization or select from the suggestions</div>
                     </div>
+                    
+                    <!-- ADDED: Account Management Section -->
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3">
+                        <i class="fas fa-user-shield me-2"></i>Account Management
+                    </h6>
+                    {% if d.user_account %}
+                    <div class="alert alert-success py-2 mb-3">
+                        <small>
+                            <i class="fas fa-check-circle me-1"></i>
+                            Account exists: <strong>{{ d.user_account.username }}</strong>
+                            {% if d.user_account.date_created %}
+                            | Created: {{ d.user_account.date_created.strftime('%b %d, %Y') }}
+                            {% endif %}
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reset Password</label>
+                        <input type="password" name="new_password" class="form-control" placeholder="Leave blank to keep current password" style="border-radius: 8px; border: 1px solid #e3f2fd;">
+                        <div class="form-text">Enter new password to reset, or leave empty to keep current password</div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning py-2 mb-3">
+                        <small>
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            No login account created yet
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Create Username <span class="text-danger">*</span></label>
+                        <input type="text" name="username" class="form-control" placeholder="doctor_username" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Create Password <span class="text-danger">*</span></label>
+                        <input type="password" name="new_password" class="form-control" placeholder="Enter password" required style="border-radius: 8px; border: 1px solid #e3f2fd;">
+                        <div class="form-text">This will create a login account for the doctor</div>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="modal-footer" style="border-top: 1px solid #e3f2fd;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>

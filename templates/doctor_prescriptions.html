@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+            <i class="fas fa-prescription me-2" style="color: #3498db;"></i>My Prescriptions
+        </h2>
+        <div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPrescriptionModal">
+                <i class="fas fa-plus me-1"></i>Add Prescription
+            </button>
+            <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if prescriptions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Medication</th>
+                                    <th>Dosage</th>
+                                    <th>Frequency</th>
+                                    <th>Duration</th>
+                                    <th>Date Prescribed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for prescription in prescriptions %}
+                                <tr>
+                                    <td>{{ prescription.patient.first_name }} {{ prescription.patient.surname }}</td>
+                                    <td>{{ prescription.medication_name }}</td>
+                                    <td>{{ prescription.dosage }}</td>
+                                    <td>{{ prescription.frequency }}</td>
+                                    <td>{{ prescription.duration }}</td>
+                                    <td>{{ prescription.date_prescribed.strftime('%Y-%m-%d') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-prescription-bottle fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Prescriptions</h5>
+                        <p class="text-muted">You haven't prescribed any medications yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Prescription Modal -->
+<div class="modal fade" id="addPrescriptionModal" tabindex="-1" aria-labelledby="addPrescriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #3498db; color: white;">
+                <h5 class="modal-title" id="addPrescriptionModalLabel">Add New Prescription</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('doctor_add_prescription') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Patient</label>
+                        <select name="patient_id" class="form-select" required>
+                            <option value="" disabled selected>Select a patient</option>
+                            {% for patient in patients %}
+                            <option value="{{ patient.id }}">{{ patient.first_name }} {{ patient.surname }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Medication Name</label>
+                        <input type="text" name="medication_name" class="form-control" placeholder="e.g., Amoxicillin" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Dosage</label>
+                        <input type="text" name="dosage" class="form-control" placeholder="e.g., 500mg" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Frequency</label>
+                        <input type="text" name="frequency" class="form-control" placeholder="e.g., 3 times daily" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Duration</label>
+                        <input type="text" name="duration" class="form-control" placeholder="e.g., 7 days" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Instructions (Optional)</label>
+                        <textarea name="instructions" class="form-control" placeholder="Additional instructions..." rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date Prescribed</label>
+                        <!-- FIXED: Use current date without calling date.today() -->
+                        <input type="date" name="date_prescribed" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Prescription</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set today's date as default in the date field
+document.addEventListener('DOMContentLoaded', function() {
+    const dateField = document.querySelector('input[name="date_prescribed"]');
+    if (dateField) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateField.value = `${yyyy}-${mm}-${dd}`;
+    }
+});
+</script>
+
+{% endblock %}

@@ -26,11 +26,13 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 # Index (Dashboard)
-from datetime import datetime, timedelta, date
-
 @app.route('/')
 @login_required
 def index():
+    # Redirect doctors to their dashboard, admins to main dashboard
+    if current_user.doctor:
+        return redirect(url_for('doctor_dashboard'))
+    
     patients = Patient.query.all()
     doctors = Doctor.query.all()
     appointments = Appointment.query.all()
@@ -105,14 +107,18 @@ def index():
                            total_medical_records=total_medical_records,
                            recent_patients=recent_patients,
                            recent_medical_records=recent_medical_records,
-                           current_time=current_time)  # Make sure this is passed
+                           current_time=current_time)
 
 @app.route('/patients')
 @login_required
 def patients():
+    # Redirect doctors to their patient view
+    if current_user.doctor:
+        return redirect(url_for('doctor_patients'))
+    
     search_query = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
-    per_page = 10  # Show 10 patients per page
+    per_page = 10
     
     # Build query based on search
     if search_query:
@@ -155,6 +161,7 @@ def file_extension(filename):
     return filename.split('.')[-1].upper() if '.' in filename else 'FILE'
 
 @app.route('/add_patient', methods=['POST'])
+@login_required
 def add_patient():
     if request.method == 'POST':
         first_name = request.form['first_name']
@@ -178,6 +185,7 @@ def add_patient():
         return redirect(url_for('patients'))
 
 @app.route('/edit_patient/<int:patient_id>', methods=['POST'])
+@login_required
 def edit_patient(patient_id):
     patient = Patient.query.get_or_404(patient_id)
     
@@ -194,6 +202,7 @@ def edit_patient(patient_id):
         return redirect(url_for('patients'))
     
 @app.route('/delete_patient/<int:patient_id>')
+@login_required
 def delete_patient(patient_id):
     patient = Patient.query.get_or_404(patient_id)
     
@@ -206,12 +215,16 @@ def delete_patient(patient_id):
     db.session.commit()
     flash('Patient deleted successfully!', 'success')
     
-    return redirect(url_for('patients'))    
+    return redirect(url_for('patients'))
 
 # Add Appointment
 @app.route('/appointments', methods=['GET', 'POST'])
 @login_required
 def appointments():
+    # Redirect doctors to their appointment view
+    if current_user.doctor:
+        return redirect(url_for('doctor_appointments'))
+    
     # Handle appointment creation
     if request.method == 'POST':
         date_str = request.form['date']  
@@ -368,7 +381,6 @@ def delete_appointment(appointment_id):
     db.session.delete(appointment)
     db.session.commit()
     flash("Appointment deleted successfully!", "success")
-    # Redirect back to appointments page instead of index
     return redirect(url_for('appointments'))
 
 # Register
@@ -404,49 +416,23 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             login_user(user)
-            return redirect(url_for("index"))
+            # Redirect to appropriate dashboard based on user type
+            if user.doctor:
+                return redirect(url_for('doctor_dashboard'))
+            else:
+                return redirect(url_for('index'))
         flash("Invalid username or password")
     return render_template("login.html")
 
-# Add Doctor
+# Doctor Management
 @app.route('/doctors')
 @login_required
 def doctors():
-    from datetime import date
-
-    search_query = request.args.get('search', '')
-    if search_query:
-        doctors = Doctor.query.filter(
-            (Doctor.name.ilike(f'%{search_query}%')) | 
-            (Doctor.specialization.ilike(f'%{search_query}%'))
-        ).all()
-    else:
-        doctors = Doctor.query.all()
+    # Only admin can access doctor management
+    if current_user.doctor:
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('doctor_dashboard'))
     
-    # Add today_date for status comparison in the template
-    today_date = date.today()
-    
-    return render_template('doctors.html', doctors=doctors, search_query=search_query, today_date=today_date)
-
-@app.route('/add_doctor', methods=['GET', 'POST'])
-def add_doctor():
-    if request.method == 'POST':
-        first_name = request.form['first_name']
-        surname = request.form['surname']
-        specialization = request.form['specialization']
-        
-        new_doctor = Doctor(
-            first_name=first_name, 
-            surname=surname, 
-            specialization=specialization
-        )
-        
-        db.session.add(new_doctor)
-        db.session.commit()
-        flash('Doctor added successfully!', 'success')
-        return redirect(url_for('doctors'))
-    
-    # For GET requests, show the doctors list
     search_query = request.args.get('search', '')
     if search_query:
         doctors = Doctor.query.filter(
@@ -457,10 +443,62 @@ def add_doctor():
     else:
         doctors = Doctor.query.all()
     
-    return render_template('doctors.html', doctors=doctors, search_query=search_query)
+    today_date = date.today()
+    
+    return render_template('doctors.html', doctors=doctors, search_query=search_query, today_date=today_date)
+
+@app.route('/add_doctor', methods=['POST'])
+@login_required
+def add_doctor():
+    # Only admin can add doctors
+    if current_user.doctor:
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('doctor_dashboard'))
+    
+    if request.method == 'POST':
+        first_name = request.form['first_name']
+        surname = request.form['surname']
+        specialization = request.form['specialization']
+        username = request.form['username']
+        password = request.form['password']
+        
+        # Check if username already exists
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists! Please choose a different username.', 'danger')
+            return redirect(url_for('doctors'))
+        
+        # Create new doctor
+        new_doctor = Doctor(
+            first_name=first_name, 
+            surname=surname, 
+            specialization=specialization
+        )
+        
+        db.session.add(new_doctor)
+        db.session.flush()  # This assigns an ID to new_doctor without committing
+        
+        # Create user account for doctor
+        user = User(
+            username=username,
+            doctor_id=new_doctor.id,
+            is_admin=False
+        )
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Doctor added successfully with login account!', 'success')
+        return redirect(url_for('doctors'))
 
 @app.route('/edit_doctor/<int:doctor_id>', methods=['POST'])
+@login_required
 def edit_doctor(doctor_id):
+    # Only admin can edit doctors
+    if current_user.doctor:
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('doctor_dashboard'))
+    
     doctor = Doctor.query.get_or_404(doctor_id)
     
     if request.method == 'POST':
@@ -468,18 +506,58 @@ def edit_doctor(doctor_id):
         doctor.surname = request.form['surname']
         doctor.specialization = request.form['specialization']
         
+        # Handle account creation/update
+        username = request.form.get('username')
+        new_password = request.form.get('new_password')
+        
+        if username or new_password:
+            # Check if doctor already has a user account
+            user = User.query.filter_by(doctor_id=doctor_id).first()
+            
+            if user:
+                # Update existing account
+                if new_password:
+                    user.set_password(new_password)
+                    flash('Password updated successfully!', 'success')
+            else:
+                # Create new account
+                if username and new_password:
+                    if User.query.filter_by(username=username).first():
+                        flash('Username already exists! Please choose a different username.', 'danger')
+                        return redirect(url_for('doctors'))
+                    
+                    user = User(
+                        username=username,
+                        doctor_id=doctor.id,
+                        is_admin=False
+                    )
+                    user.set_password(new_password)
+                    db.session.add(user)
+                    flash('Login account created successfully!', 'success')
+        
         db.session.commit()
         flash('Doctor updated successfully!', 'success')
         return redirect(url_for('doctors'))
 
 @app.route('/delete_doctor/<int:doctor_id>')
+@login_required
 def delete_doctor(doctor_id):
+    # Only admin can delete doctors
+    if current_user.doctor:
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('doctor_dashboard'))
+    
     doctor = Doctor.query.get_or_404(doctor_id)
     
     # Check if doctor has appointments
     if doctor.appointments:
         flash('Cannot delete doctor with existing appointments!', 'danger')
         return redirect(url_for('doctors'))
+    
+    # Delete associated user account if exists
+    user = User.query.filter_by(doctor_id=doctor_id).first()
+    if user:
+        db.session.delete(user)
     
     db.session.delete(doctor)
     db.session.commit()
@@ -492,12 +570,187 @@ def delete_doctor(doctor_id):
 def logout():
     # Clear any existing flash messages
     from flask import get_flashed_messages
-    get_flashed_messages()  # This clears the flash messages queue
+    get_flashed_messages()
     
     logout_user()
-    flash("Logged out successfully!", "info")  # Use a different category if needed
+    flash("Logged out successfully!", "info")
     return redirect(url_for("login"))
 
+# Doctor Dashboard Routes
+@app.route('/doctor_dashboard')
+@login_required
+def doctor_dashboard():
+    # Check if current user is a doctor
+    if not current_user.doctor:
+        flash('Access denied. Doctor account required.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_doctor = current_user.doctor
+    current_time = datetime.now()
+    today = current_time.date()
+    
+    # Today's appointments for this doctor
+    today_appointments = Appointment.query.filter(
+        Appointment.doctor_id == current_doctor.id,
+        Appointment.date == today
+    ).order_by(Appointment.start_time).all()
+    
+    # Total unique patients for this doctor
+    total_patients = db.session.query(Patient).join(Appointment).filter(
+        Appointment.doctor_id == current_doctor.id
+    ).distinct().count()
+    
+    # Total prescriptions by this doctor
+    total_prescriptions = Prescription.query.filter_by(doctor_id=current_doctor.id).count()
+    
+    # Medical records count by this doctor
+    medical_records_count = MedicalRecord.query.filter_by(doctor_id=current_doctor.id).count()
+    
+    # Recent patients (last 5)
+    recent_patients = db.session.query(Patient).join(Appointment).filter(
+        Appointment.doctor_id == current_doctor.id
+    ).order_by(Patient.date_created.desc()).distinct().limit(5).all()
+    
+    # Add appointment count to recent patients
+    for patient in recent_patients:
+        patient.appointment_count = Appointment.query.filter_by(
+            patient_id=patient.id, 
+            doctor_id=current_doctor.id
+        ).count()
+    
+    return render_template('doctor_dashboard.html',
+                         current_doctor=current_doctor,
+                         current_time=current_time,
+                         today_appointments=today_appointments,
+                         total_patients=total_patients,
+                         total_prescriptions=total_prescriptions,
+                         medical_records_count=medical_records_count,
+                         recent_patients=recent_patients)
+
+@app.route('/doctor/patients')
+@login_required
+def doctor_patients():
+    if not current_user.doctor:
+        flash('Access denied. Doctor account required.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_doctor = current_user.doctor
+    
+    # Get patients who have appointments with this doctor
+    patients = db.session.query(Patient).join(Appointment).filter(
+        Appointment.doctor_id == current_doctor.id
+    ).distinct().all()
+    
+    return render_template('doctor_patients.html', 
+                         patients=patients, 
+                         current_doctor=current_doctor)
+
+@app.route('/doctor/appointments')
+@login_required
+def doctor_appointments():
+    if not current_user.doctor:
+        flash('Access denied. Doctor account required.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_doctor = current_user.doctor
+    
+    # Get appointments for this doctor
+    appointments = Appointment.query.filter_by(
+        doctor_id=current_doctor.id
+    ).order_by(Appointment.date.desc(), Appointment.start_time.desc()).all()
+    
+    return render_template('doctor_appointments.html', 
+                         appointments=appointments, 
+                         current_doctor=current_doctor)
+
+@app.route('/doctor/prescriptions')
+@login_required
+def doctor_prescriptions():
+    if not current_user.doctor:
+        flash('Access denied. Doctor account required.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_doctor = current_user.doctor
+    
+    # Get prescriptions by this doctor
+    prescriptions = Prescription.query.filter_by(
+        doctor_id=current_doctor.id
+    ).order_by(Prescription.date_prescribed.desc()).all()
+    
+    # Get patients for the prescription form
+    patients = db.session.query(Patient).join(Appointment).filter(
+        Appointment.doctor_id == current_doctor.id
+    ).distinct().all()
+    
+    # Pass today's date to the template
+    today = date.today().strftime('%Y-%m-%d')
+    
+    return render_template('doctor_prescriptions.html', 
+                         prescriptions=prescriptions,
+                         patients=patients,
+                         current_doctor=current_doctor,
+                         today_date=today)  # Add this
+
+@app.route('/doctor/medical_records')
+@login_required
+def doctor_medical_records():
+    if not current_user.doctor:
+        flash('Access denied. Doctor account required.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_doctor = current_user.doctor
+    
+    # Get medical records created by this doctor
+    medical_records = MedicalRecord.query.filter_by(
+        doctor_id=current_doctor.id
+    ).order_by(MedicalRecord.upload_date.desc()).all()
+    
+    # Get patients for the medical records form
+    patients = db.session.query(Patient).join(Appointment).filter(
+        Appointment.doctor_id == current_doctor.id
+    ).distinct().all()
+    
+    return render_template('doctor_medical_records.html', 
+                         medical_records=medical_records,
+                         patients=patients,
+                         current_doctor=current_doctor)
+
+@app.route('/doctor/add_prescription', methods=['POST'])
+@login_required
+def doctor_add_prescription():
+    if not current_user.doctor:
+        flash('Access denied. Doctor account required.', 'danger')
+        return redirect(url_for('doctor_dashboard'))
+    
+    current_doctor = current_user.doctor
+    
+    if request.method == 'POST':
+        medication_name = request.form['medication_name']
+        dosage = request.form['dosage']
+        frequency = request.form['frequency']
+        duration = request.form['duration']
+        instructions = request.form.get('instructions', '')
+        patient_id = request.form['patient_id']
+        date_prescribed = datetime.strptime(request.form['date_prescribed'], '%Y-%m-%d').date()
+
+        new_prescription = Prescription(
+            medication_name=medication_name,
+            dosage=dosage,
+            frequency=frequency,
+            duration=duration,
+            instructions=instructions,
+            patient_id=patient_id,
+            doctor_id=current_doctor.id,
+            date_prescribed=date_prescribed
+        )
+        
+        db.session.add(new_prescription)
+        db.session.commit()
+        flash('Prescription added successfully!', 'success')
+        
+    return redirect(url_for('doctor_prescriptions'))
+
+# Doctor Availability
 @app.route('/doctor_availability', methods=['GET', 'POST'])
 @login_required
 def doctor_availability():
@@ -575,7 +828,7 @@ def doctor_availability():
     
     # Get all doctors
     doctors = Doctor.query.all()
-    patients = Patient.query.all()  # Add this for the booking form
+    patients = Patient.query.all()
     
     # Get appointments for the selected date
     appointments = Appointment.query.filter(Appointment.date == selected_date).all()
@@ -644,7 +897,7 @@ def doctor_availability():
     # Format dates for template
     today = date.today()
     min_date = today
-    max_date = today + timedelta(days=30)  # Show availability for next 30 days
+    max_date = today + timedelta(days=30)
     
     # Get booked appointments for the next 7 days to show availability
     seven_days_later = today + timedelta(days=7)
@@ -659,17 +912,16 @@ def doctor_availability():
         key = f"{appt.doctor_id}_{appt.date}"
         if key not in booked_slots:
             booked_slots[key] = []
-        # Store both start and end times
         booked_slots[key].append({
             'start': appt.start_time.strftime('%H:%M'),
             'end': appt.end_time.strftime('%H:%M')
         })
     
-    # Prepare detailed appointments data for JSON - FIXED: Use different variable name
+    # Prepare detailed appointments data for JSON
     detailed_appointments_json = {}
-    for doctor_data in availability_data:  # Changed variable name to avoid conflict
+    for doctor_data in availability_data:
         doctor_appointments_list = []
-        for appointment in doctor_data['appointments']:  # Access as dictionary
+        for appointment in doctor_data['appointments']:
             doctor_appointments_list.append({
                 'id': appointment.id,
                 'patient_name': f"{appointment.patient.first_name} {appointment.patient.surname}",
@@ -691,12 +943,16 @@ def doctor_availability():
                          is_weekend=is_weekend,
                          patients=patients,
                          booked_slots=booked_slots,
-                         appointments_json=detailed_appointments_json)  # Use the fixed variable name
+                         appointments_json=detailed_appointments_json)
 
 # Prescription Management
 @app.route('/prescriptions')
 @login_required
 def prescriptions():
+    # Redirect doctors to their prescription view
+    if current_user.doctor:
+        return redirect(url_for('doctor_prescriptions'))
+    
     search_query = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
     per_page = 10
@@ -724,7 +980,6 @@ def prescriptions():
     patients = Patient.query.all()
     doctors = Doctor.query.all()
     
-    # ADD THIS LINE - Pass current date to template
     today = date.today()
     
     return render_template('prescriptions.html',
@@ -734,7 +989,7 @@ def prescriptions():
                          search_query=search_query,
                          page=page,
                          total_pages=total_pages,
-                         today=today)  # Add this parameter
+                         today=today)
 
 @app.route('/add_prescription', methods=['POST'])
 @login_required
@@ -807,7 +1062,7 @@ def get_patient_info(patient_id):
         'gender': patient.gender
     })
 
-
+# Medical Records
 UPLOAD_FOLDER = 'medical_records'
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx', 'txt'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -823,6 +1078,10 @@ def ensure_upload_folder():
 @app.route('/medical_records')
 @login_required
 def medical_records():
+    # Redirect doctors to their medical records view
+    if current_user.doctor:
+        return redirect(url_for('doctor_medical_records'))
+    
     search_query = request.args.get('search', '')
     patient_filter = request.args.get('patient_filter', '')
     record_type_filter = request.args.get('record_type', '')
@@ -980,4 +1239,4 @@ with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
-    app.run(host= "0.0.0.0", port=8000, debug=True)
+    app.run(host= "0.0.0.0", port=5000, debug=True)

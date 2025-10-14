@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;">
+            <i class="fas fa-calendar-alt me-2" style="color: #3498db;"></i>My Appointments
+        </h2>
+        <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if appointments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Patient</th>
+                                    <th>Diagnosis</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in appointments %}
+                                <tr>
+                                    <td>{{ appointment.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }}</td>
+                                    <td>{{ appointment.patient.first_name }} {{ appointment.patient.surname }}</td>
+                                    <td>
+                                        {% if appointment.diagnosis %}
+                                            <span class="badge bg-info text-dark">{{ appointment.diagnosis|truncate(30) }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Not diagnosed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <!-- FIXED: Use current date from Flask context or calculate in template -->
+                                        {% set appointment_date = appointment.date %}
+                                        {% if appointment_date < now.date() %}
+                                            <span class="badge bg-secondary">Completed</span>
+                                        {% elif appointment_date == now.date() %}
+                                            <span class="badge bg-warning text-dark">Today</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Upcoming</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Appointments</h5>
+                        <p class="text-muted">You don't have any appointments scheduled.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

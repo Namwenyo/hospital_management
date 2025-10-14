@@ -55,27 +55,158 @@
     <!-- Fixed Header -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background-color: #1a1d20; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}" style="color: #FFCB74;">
+            <a class="navbar-brand fw-bold" href="{% if current_user.doctor %}{{ url_for('doctor_dashboard') }}{% else %}{{ url_for('index') }}{% endif %}" style="color: #FFCB74;">
                 <i class="fas fa-heartbeat me-2" style="color: #FFCB74;"></i>VilloMed
+                {% if current_user.doctor %}
+                <small class="ms-2 badge bg-warning text-dark">Doctor Portal</small>
+                {% else %}
+                <small class="ms-2 badge bg-primary">Admin Portal</small>
+                {% endif %}
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('appointments') }}">Appointments</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('patients') }}">Patients</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('doctors') }}">Doctors</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('doctor_availability') }}">Availability</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('prescriptions') }}">Prescriptions</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('medical_records') }}">Medical Records</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.doctor %}
+                            <!-- Doctor Navigation -->
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('doctor_dashboard') }}">
+                                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('doctor_patients') }}">
+                                    <i class="fas fa-users me-1"></i>My Patients
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('doctor_appointments') }}">
+                                    <i class="fas fa-calendar-alt me-1"></i>My Appointments
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('doctor_prescriptions') }}">
+                                    <i class="fas fa-prescription me-1"></i>Prescriptions
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('doctor_medical_records') }}">
+                                    <i class="fas fa-file-medical me-1"></i>Medical Records
+                                </a>
+                            </li>
+                        {% else %}
+                            <!-- Admin Navigation -->
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('index') }}">
+                                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('appointments') }}">
+                                    <i class="fas fa-calendar-alt me-1"></i>Appointments
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('patients') }}">
+                                    <i class="fas fa-users me-1"></i>Patients
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('doctors') }}">
+                                    <i class="fas fa-user-md me-1"></i>Doctors
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('doctor_availability') }}">
+                                    <i class="fas fa-calendar-check me-1"></i>Availability
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('prescriptions') }}">
+                                    <i class="fas fa-prescription me-1"></i>Prescriptions
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('medical_records') }}">
+                                    <i class="fas fa-file-medical me-1"></i>Medical Records
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        <!-- User Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle me-1"></i>
+                                {% if current_user.doctor %}
+                                    Dr. {{ current_user.doctor.name }}
+                                {% else %}
+                                    {{ current_user.username }}
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                {% if current_user.doctor %}
+                                    <li>
+                                        <span class="dropdown-item-text small text-muted">
+                                            <i class="fas fa-stethoscope me-1"></i>
+                                            {{ current_user.doctor.specialization }}
+                                        </span>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('logout') }}">
+                                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <!-- Login/Register Links (when not authenticated) -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">
+                                <i class="fas fa-sign-in-alt me-1"></i>Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('register') }}">
+                                <i class="fas fa-user-plus me-1"></i>Register
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
     {% endif %}
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-5 pt-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <div class="d-flex align-items-center">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle me-2"></i>
+                            {% elif category == 'danger' or category == 'error' %}
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                            {% elif category == 'info' %}
+                                <i class="fas fa-info-circle me-2"></i>
+                            {% else %}
+                                <i class="fas fa-bell me-2"></i>
+                            {% endif %}
+                            <span>{{ message }}</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
     <!-- Main Content with padding for fixed header -->
     <main class="container mt-5 pt-4">
@@ -108,12 +239,17 @@
                 <div class="col-lg-2 col-md-6 mb-4">
                     <h5 class="text-uppercase mb-4" style="color: #FFCB74;">Quick Links</h5>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><a href="{{ url_for('index') }}" class="text-light text-decoration-none">Home</a></li>
-                        <li class="mb-2"><a href="{{ url_for('appointments') }}" class="text-light text-decoration-none">Appointments</a></li>
-                        <li class="mb-2"><a href="{{ url_for('patients') }}" class="text-light text-decoration-none">Patients</a></li>
-                        <li class="mb-2"><a href="{{ url_for('doctors') }}" class="text-light text-decoration-none">Doctors</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('doctor_availability') }}">Availability</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('prescriptions') }}">Prescriptions</a></li>
+                        {% if current_user.doctor %}
+                            <li class="mb-2"><a href="{{ url_for('doctor_dashboard') }}" class="text-light text-decoration-none">Dashboard</a></li>
+                            <li class="mb-2"><a href="{{ url_for('doctor_patients') }}" class="text-light text-decoration-none">My Patients</a></li>
+                            <li class="mb-2"><a href="{{ url_for('doctor_appointments') }}" class="text-light text-decoration-none">Appointments</a></li>
+                            <li class="mb-2"><a href="{{ url_for('doctor_prescriptions') }}" class="text-light text-decoration-none">Prescriptions</a></li>
+                        {% else %}
+                            <li class="mb-2"><a href="{{ url_for('index') }}" class="text-light text-decoration-none">Dashboard</a></li>
+                            <li class="mb-2"><a href="{{ url_for('appointments') }}" class="text-light text-decoration-none">Appointments</a></li>
+                            <li class="mb-2"><a href="{{ url_for('patients') }}" class="text-light text-decoration-none">Patients</a></li>
+                            <li class="mb-2"><a href="{{ url_for('doctors') }}" class="text-light text-decoration-none">Doctors</a></li>
+                        {% endif %}
                     </ul>
                 </div>
 
@@ -121,7 +257,12 @@
                 <div class="col-lg-3 col-md-6 mb-4">
                     <h5 class="text-uppercase mb-4" style="color: #FFCB74;">System</h5>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><a href="{{ url_for('logout') }}" class="text-light text-decoration-none">Logout</a></li>
+                        {% if current_user.is_authenticated %}
+                            <li class="mb-2"><a href="{{ url_for('logout') }}" class="text-light text-decoration-none">Logout</a></li>
+                        {% else %}
+                            <li class="mb-2"><a href="{{ url_for('login') }}" class="text-light text-decoration-none">Login</a></li>
+                            <li class="mb-2"><a href="{{ url_for('register') }}" class="text-light text-decoration-none">Register</a></li>
+                        {% endif %}
                         <li class="mb-2"><a href="#" class="text-light text-decoration-none">User Guide</a></li>
                         <li class="mb-2"><a href="#" class="text-light text-decoration-none">Support</a></li>
                     </ul>
@@ -158,74 +299,135 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Add this RIGHT AFTER all your modal HTML, before the styles -->
-<div class="modal-backdrop-fix"></div>
 
-<style>
-/* Force remove any stuck backdrops */
-.modal-backdrop {
-    display: none !important;
-}
-body.modal-open {
-    overflow: auto !important;
-    padding-right: 0 !important;
-}
-</style>
+    <!-- Modal Fix -->
+    <div class="modal-backdrop-fix"></div>
 
-<script>
-// COMPLETE MODAL FIX
-document.addEventListener('DOMContentLoaded', function() {
-    // Fix for all modal close buttons
-    document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close, .btn-outline-secondary').forEach(button => {
-        button.addEventListener('click', function() {
-            // Force hide all modals
-            var modals = document.querySelectorAll('.modal');
-            modals.forEach(modal => {
-                var modalInstance = bootstrap.Modal.getInstance(modal);
-                if (modalInstance) {
-                    modalInstance.hide();
-                }
-                modal.style.display = 'none';
-            });
-            
-            // Force remove backdrops
-            document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-                backdrop.remove();
-            });
-            
-            // Force reset body
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = 'auto';
-            document.body.style.paddingRight = '0';
-        });
-    });
+    <style>
+    /* Force remove any stuck backdrops */
+    .modal-backdrop {
+        display: none !important;
+    }
+    body.modal-open {
+        overflow: auto !important;
+        padding-right: 0 !important;
+    }
+    
+    /* Enhanced Navigation Styles */
+    .navbar-nav .nav-link {
+        transition: all 0.3s ease;
+        border-radius: 5px;
+        margin: 0 2px;
+    }
+    
+    .navbar-nav .nav-link:hover {
+        background-color: rgba(255, 203, 116, 0.1);
+        transform: translateY(-1px);
+    }
+    
+    .dropdown-menu {
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border-radius: 8px;
+    }
+    
+    .dropdown-item {
+        transition: all 0.2s ease;
+    }
+    
+    .dropdown-item:hover {
+        background-color: #3498db;
+        color: white;
+    }
+    
+    /* Flash message enhancements */
+    .alert {
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Badge enhancements */
+    .badge {
+        font-weight: 500;
+    }
+    </style>
 
-    // Prevent multiple modals from opening
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('show.bs.modal', function() {
-            // Hide all other modals first
-            document.querySelectorAll('.modal').forEach(otherModal => {
-                if (otherModal !== modal) {
-                    var otherInstance = bootstrap.Modal.getInstance(otherModal);
-                    if (otherInstance) {
-                        otherInstance.hide();
+    <script>
+    // COMPLETE MODAL FIX
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fix for all modal close buttons
+        document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close, .btn-outline-secondary').forEach(button => {
+            button.addEventListener('click', function() {
+                // Force hide all modals
+                var modals = document.querySelectorAll('.modal');
+                modals.forEach(modal => {
+                    var modalInstance = bootstrap.Modal.getInstance(modal);
+                    if (modalInstance) {
+                        modalInstance.hide();
                     }
-                }
+                    modal.style.display = 'none';
+                });
+                
+                // Force remove backdrops
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                    backdrop.remove();
+                });
+                
+                // Force reset body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = 'auto';
+                document.body.style.paddingRight = '0';
             });
         });
-    });
-});
 
-// Emergency fix - run this in browser console if stuck
-function forceCloseModals() {
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
+        // Prevent multiple modals from opening
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('show.bs.modal', function() {
+                // Hide all other modals first
+                document.querySelectorAll('.modal').forEach(otherModal => {
+                    if (otherModal !== modal) {
+                        var otherInstance = bootstrap.Modal.getInstance(otherModal);
+                        if (otherInstance) {
+                            otherInstance.hide();
+                        }
+                    }
+                });
+            });
+        });
+
+        // Auto-dismiss alerts after 5 seconds
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            setTimeout(() => {
+                if (alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            }, 5000);
+        });
+
+        // Add active class to current page in navigation
+        const currentLocation = location.href;
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+        navLinks.forEach(link => {
+            if (link.href === currentLocation) {
+                link.classList.add('active');
+                link.style.backgroundColor = 'rgba(255, 203, 116, 0.2)';
+            }
+        });
     });
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = 'auto';
-}
-</script>
+
+    // Emergency fix - run this in browser console if stuck
+    function forceCloseModals() {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        });
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = 'auto';
+    }
+    </script>
 </body>
 </html>
